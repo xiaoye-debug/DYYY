@@ -16372,6 +16372,27 @@ static Class tabBarButtonClass = nil;
 
 static char kDYYYFeedTableOriginalHeightGapKey;
 static char kDYYYFeedTableFullScreenAppliedKey;
+static char kDYYYAuthorProfileOriginalFrameKey;
+
+static BOOL DYYYIsAuthorProfileContext(UIView *view) {
+    if (!view) {
+        return NO;
+    }
+
+    UIResponder *responder = view;
+    NSInteger depth = 0;
+    while ((responder = [responder nextResponder]) && depth++ < 18) {
+        NSString *className = NSStringFromClass([responder class]);
+        if ([className containsString:@"UserHomeViewController"] ||
+            [className containsString:@"UserProfileViewController"] ||
+            [className containsString:@"ProfileViewController"] ||
+            [className containsString:@"UserHome"]) {
+            return YES;
+        }
+    }
+
+    return NO;
+}
 
 %hook AWEFeedTableView
 - (void)layoutSubviews {
@@ -16379,6 +16400,12 @@ static char kDYYYFeedTableFullScreenAppliedKey;
 
     UIView *superview = self.superview;
     if (!superview) {
+        return;
+    }
+
+    // 作者主页使用自己的 Story/分页容器。全屏模式不能强改这个表的高度，
+    // 否则上下相邻 Cell 会同时落在可视区域内，表现为上一条和下一条视频叠在一起。
+    if (DYYYIsAuthorProfileContext(self)) {
         return;
     }
 
@@ -16949,10 +16976,30 @@ static void DYYYRemoveAppLifecycleObservers(void) {
                 }
 
                 if (isWorkImage) {
-                    // 修复作者主页作品图片上移问题
-                    CGRect frame = subview.frame;
-                    frame.origin.y += gCurrentTabBarHeight;
-                    subview.frame = frame;
+                    // 作者主页会反复触发 layoutSubviews。原代码使用
+                    // frame.origin.y += gCurrentTabBarHeight，会在每次布局时
+                    // 再移动一次，滑动后最终造成上下两个作品 Cell 位置错乱/重叠。
+                    // 这里保存原始 frame，只计算一次相对偏移。
+                    CGRect originalFrame = subview.frame;
+                    NSValue *storedFrame = objc_getAssociatedObject(subview, &kDYYYAuthorProfileOriginalFrameKey);
+                    if (storedFrame) {
+                        originalFrame = storedFrame.CGRectValue;
+                    } else {
+                        objc_setAssociatedObject(subview,
+                                                 &kDYYYAuthorProfileOriginalFrameKey,
+                                                 [NSValue valueWithCGRect:originalFrame],
+                                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                    }
+
+                    if (gCurrentTabBarHeight > 0.0) {
+                        CGRect adjustedFrame = originalFrame;
+                        adjustedFrame.origin.y = originalFrame.origin.y + gCurrentTabBarHeight;
+                        if (!CGRectEqualToRect(subview.frame, adjustedFrame)) {
+                            subview.frame = adjustedFrame;
+                        }
+                    } else if (!CGRectEqualToRect(subview.frame, originalFrame)) {
+                        subview.frame = originalFrame;
+                    }
                 }
             }
         }
@@ -17189,6 +17236,12 @@ static void DYYYRemoveAppLifecycleObservers(void) {
 %hook AWEAwemeDetailTableView
 
 - (void)setFrame:(CGRect)frame {
+    // 作者主页的视频分页由抖音自身管理，不参与 DYYY 的详情表全屏扩高。
+    if (DYYYIsAuthorProfileContext(self)) {
+        %orig(frame);
+        return;
+    }
+
     if (DYYYGetBool(@"DYYYEnableFullScreen")) {
         CGFloat screenHeight = [UIScreen mainScreen].bounds.size.height;
 
