@@ -100,6 +100,7 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 
 #pragma mark - DYYY Liquid Glass
 
+static UIViewController *gDYYYFloatingAdjustPanel = nil;
 static NSString * const kDYYYLiquidGlassStyleKey = @"DYYYLiquidGlassStyle";
 static NSInteger const kDYYYLiquidGlassViewTag = 260925;
 
