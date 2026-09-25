@@ -119,35 +119,37 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 @implementation DYYYFloatingSliderOverlay
 
 - (void)build {
-    self.backgroundColor = [UIColor colorWithWhite:0 alpha:0.42];
+    self.backgroundColor = UIColor.clearColor;
 
-    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
-    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-    blurView.frame = self.bounds;
-    blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [self addSubview:blurView];
+    UIView *dim = [[UIView alloc] initWithFrame:self.bounds];
+    dim.backgroundColor = [UIColor colorWithWhite:0 alpha:0.04];
+    dim.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self addSubview:dim];
 
     UIView *card = [[UIView alloc] initWithFrame:CGRectZero];
     card.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits) {
         return traits.userInterfaceStyle == UIUserInterfaceStyleDark
-            ? [UIColor colorWithWhite:0.12 alpha:0.97]
-            : [UIColor colorWithWhite:0.98 alpha:0.97];
+            ? [UIColor colorWithWhite:0.10 alpha:0.98]
+            : [UIColor colorWithWhite:0.98 alpha:0.98];
     }];
-    card.layer.cornerRadius = 26;
-    card.clipsToBounds = YES;
+    card.layer.cornerRadius = 24;
+    card.layer.shadowColor = UIColor.blackColor.CGColor;
+    card.layer.shadowOpacity = 0.18;
+    card.layer.shadowRadius = 18;
+    card.layer.shadowOffset = CGSizeMake(0, 8);
     card.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:card];
 
     UILabel *title = [[UILabel alloc] init];
     title.text = self.title;
-    title.font = [UIFont boldSystemFontOfSize:24];
+    title.font = [UIFont boldSystemFontOfSize:23];
     title.textAlignment = NSTextAlignmentCenter;
     title.textColor = UIColor.labelColor;
     title.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:title];
 
     UILabel *subtitle = [[UILabel alloc] init];
-    subtitle.text = self.isScale ? @"默认值 0；左侧为负数，右侧为正数" : @"默认值 0；左移为负数，右移为正数";
+    subtitle.text = self.isScale ? @"默认值 0；左侧为负数，右侧为正数" : @"默认值 0；上移为正数，下移为负数";
     subtitle.font = [UIFont systemFontOfSize:13];
     subtitle.textColor = UIColor.secondaryLabelColor;
     subtitle.textAlignment = NSTextAlignmentCenter;
@@ -181,14 +183,14 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 
     UILabel *minLabel = [[UILabel alloc] init];
     minLabel.text = [NSString stringWithFormat:@"%+.0f", self.minimum];
-    minLabel.font = [UIFont systemFontOfSize:12];
+    minLabel.font = [UIFont systemFontOfSize:11];
     minLabel.textColor = UIColor.secondaryLabelColor;
     minLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:minLabel];
 
     UILabel *zeroLabel = [[UILabel alloc] init];
     zeroLabel.text = @"0";
-    zeroLabel.font = [UIFont systemFontOfSize:12];
+    zeroLabel.font = [UIFont systemFontOfSize:11];
     zeroLabel.textColor = UIColor.secondaryLabelColor;
     zeroLabel.textAlignment = NSTextAlignmentCenter;
     zeroLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -196,7 +198,7 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 
     UILabel *maxLabel = [[UILabel alloc] init];
     maxLabel.text = [NSString stringWithFormat:@"+%.0f", self.maximum];
-    maxLabel.font = [UIFont systemFontOfSize:12];
+    maxLabel.font = [UIFont systemFontOfSize:11];
     maxLabel.textColor = UIColor.secondaryLabelColor;
     maxLabel.textAlignment = NSTextAlignmentRight;
     maxLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -204,18 +206,18 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 
     UIButton *reset = [UIButton buttonWithType:UIButtonTypeSystem];
     [reset setTitle:@"恢复默认值  0" forState:UIControlStateNormal];
-    reset.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    reset.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
     reset.backgroundColor = UIColor.secondarySystemBackgroundColor;
-    reset.layer.cornerRadius = 14;
+    reset.layer.cornerRadius = 12;
     reset.translatesAutoresizingMaskIntoConstraints = NO;
     [reset addTarget:self action:@selector(resetTapped) forControlEvents:UIControlEventTouchUpInside];
     [card addSubview:reset];
 
     UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
     [close setTitle:@"关闭" forState:UIControlStateNormal];
-    close.titleLabel.font = [UIFont systemFontOfSize:17 weight:UIFontWeightSemibold];
+    close.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
     close.backgroundColor = UIColor.secondarySystemBackgroundColor;
-    close.layer.cornerRadius = 14;
+    close.layer.cornerRadius = 12;
     close.translatesAutoresizingMaskIntoConstraints = NO;
     [close addTarget:self action:@selector(closeTapped) forControlEvents:UIControlEventTouchUpInside];
     [card addSubview:close];
@@ -224,42 +226,42 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
         [card.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:24],
         [card.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-24],
         [card.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [card.heightAnchor constraintEqualToConstant:300],
+        [card.heightAnchor constraintEqualToConstant:350],
 
-        [title.topAnchor constraintEqualToAnchor:card.topAnchor constant:25],
+        [title.topAnchor constraintEqualToAnchor:card.topAnchor constant:22],
         [title.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:18],
         [title.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-18],
 
-        [subtitle.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:5],
+        [subtitle.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:4],
         [subtitle.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:18],
         [subtitle.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-18],
 
         [name.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:28],
-        [name.topAnchor constraintEqualToAnchor:subtitle.bottomAnchor constant:30],
+        [name.topAnchor constraintEqualToAnchor:subtitle.bottomAnchor constant:28],
 
         [self.valueLabel.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-28],
         [self.valueLabel.centerYAnchor constraintEqualToAnchor:name.centerYAnchor],
 
         [self.slider.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:28],
         [self.slider.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-28],
-        [self.slider.topAnchor constraintEqualToAnchor:name.bottomAnchor constant:14],
+        [self.slider.topAnchor constraintEqualToAnchor:name.bottomAnchor constant:12],
 
         [minLabel.leadingAnchor constraintEqualToAnchor:self.slider.leadingAnchor],
-        [minLabel.topAnchor constraintEqualToAnchor:self.slider.bottomAnchor constant:3],
+        [minLabel.topAnchor constraintEqualToAnchor:self.slider.bottomAnchor constant:2],
         [zeroLabel.centerXAnchor constraintEqualToAnchor:self.slider.centerXAnchor],
-        [zeroLabel.topAnchor constraintEqualToAnchor:self.slider.bottomAnchor constant:3],
+        [zeroLabel.topAnchor constraintEqualToAnchor:self.slider.bottomAnchor constant:2],
         [maxLabel.trailingAnchor constraintEqualToAnchor:self.slider.trailingAnchor],
-        [maxLabel.topAnchor constraintEqualToAnchor:self.slider.bottomAnchor constant:3],
+        [maxLabel.topAnchor constraintEqualToAnchor:self.slider.bottomAnchor constant:2],
 
         [reset.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:28],
         [reset.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-28],
-        [reset.bottomAnchor constraintEqualToAnchor:close.topAnchor constant:-10],
-        [reset.heightAnchor constraintEqualToConstant:44],
+        [reset.bottomAnchor constraintEqualToAnchor:close.topAnchor constant:-9],
+        [reset.heightAnchor constraintEqualToConstant:42],
 
         [close.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:28],
         [close.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-28],
-        [close.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-20],
-        [close.heightAnchor constraintEqualToConstant:44],
+        [close.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-18],
+        [close.heightAnchor constraintEqualToConstant:42],
     ]];
 
     [self refreshValueLabel:self.slider.value];
@@ -288,18 +290,16 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 @interface DYYYFloatingAdjustPanelViewController : UIViewController
 @end
 
+static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
+
 @implementation DYYYFloatingAdjustPanelViewController {
     UIView *_panel;
     UIScrollView *_scrollView;
-    UILabel *_userNameLabel;
-    UILabel *_userIDLabel;
-    UILabel *_bioLabel;
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = UIColor.clearColor;
-    self.modalPresentationStyle = UIModalPresentationOverFullScreen;
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(dyyyPanelValueChanged:)
                                                  name:kDYYYPanelDidChangeNotification
@@ -317,140 +317,50 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 }
 
 - (void)buildUI {
-    UIVisualEffectView *backgroundBlur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark]];
-    backgroundBlur.frame = self.view.bounds;
-    backgroundBlur.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    backgroundBlur.alpha = 0.18;
-    [self.view addSubview:backgroundBlur];
+    self.view.backgroundColor = UIColor.clearColor;
 
     _panel = [[UIView alloc] initWithFrame:CGRectZero];
     _panel.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits) {
         return traits.userInterfaceStyle == UIUserInterfaceStyleDark
-            ? [UIColor colorWithWhite:0.12 alpha:0.80]
-            : [UIColor colorWithWhite:0.96 alpha:0.82];
+            ? [UIColor colorWithWhite:0.12 alpha:0.88]
+            : [UIColor colorWithWhite:0.96 alpha:0.90];
     }];
     _panel.layer.cornerRadius = 24;
     _panel.layer.borderWidth = 0.8;
     _panel.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.28].CGColor;
-    _panel.clipsToBounds = YES;
+    _panel.layer.shadowColor = UIColor.blackColor.CGColor;
+    _panel.layer.shadowOpacity = 0.18;
+    _panel.layer.shadowRadius = 16;
+    _panel.layer.shadowOffset = CGSizeMake(0, 8);
     _panel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:_panel];
 
     UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
-    close.backgroundColor = [UIColor colorWithRed:0.95 green:0.22 blue:0.22 alpha:0.62];
-    close.layer.cornerRadius = 18;
+    close.backgroundColor = [UIColor colorWithRed:0.95 green:0.22 blue:0.22 alpha:0.70];
+    close.layer.cornerRadius = 17;
     [close setTitle:@"×" forState:UIControlStateNormal];
     [close setTitleColor:[UIColor colorWithRed:0.45 green:0.02 blue:0.02 alpha:1] forState:UIControlStateNormal];
-    close.titleLabel.font = [UIFont systemFontOfSize:28 weight:UIFontWeightMedium];
+    close.titleLabel.font = [UIFont systemFontOfSize:25 weight:UIFontWeightMedium];
     close.translatesAutoresizingMaskIntoConstraints = NO;
     [close addTarget:self action:@selector(closePanel) forControlEvents:UIControlEventTouchUpInside];
     [_panel addSubview:close];
 
     UIButton *collapse = [UIButton buttonWithType:UIButtonTypeSystem];
-    collapse.backgroundColor = [UIColor colorWithWhite:1 alpha:0.75];
-    collapse.layer.cornerRadius = 18;
+    collapse.backgroundColor = [UIColor colorWithWhite:1 alpha:0.78];
+    collapse.layer.cornerRadius = 17;
     [collapse setImage:[UIImage systemImageNamed:@"chevron.down"] forState:UIControlStateNormal];
     collapse.tintColor = UIColor.labelColor;
     collapse.translatesAutoresizingMaskIntoConstraints = NO;
     [collapse addTarget:self action:@selector(collapsePanel) forControlEvents:UIControlEventTouchUpInside];
     [_panel addSubview:collapse];
 
-    UIView *card = [[UIView alloc] initWithFrame:CGRectZero];
-    card.backgroundColor = [UIColor colorWithWhite:1 alpha:0.52];
-    card.layer.cornerRadius = 22;
-    card.translatesAutoresizingMaskIntoConstraints = NO;
-    [_panel addSubview:card];
-
-    UIView *avatar = [[UIView alloc] initWithFrame:CGRectZero];
-    avatar.backgroundColor = [UIColor colorWithWhite:1 alpha:0.85];
-    avatar.layer.cornerRadius = 30;
-    avatar.translatesAutoresizingMaskIntoConstraints = NO;
-    [card addSubview:avatar];
-
-    UILabel *avatarText = [[UILabel alloc] init];
-    avatarText.text = @"◉";
-    avatarText.font = [UIFont systemFontOfSize:30];
-    avatarText.textAlignment = NSTextAlignmentCenter;
-    avatarText.textColor = UIColor.secondaryLabelColor;
-    avatarText.translatesAutoresizingMaskIntoConstraints = NO;
-    [avatar addSubview:avatarText];
-
-    _userNameLabel = [[UILabel alloc] init];
-    _userNameLabel.font = [UIFont boldSystemFontOfSize:20];
-    _userNameLabel.textColor = UIColor.labelColor;
-    _userNameLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [card addSubview:_userNameLabel];
-
-    _userIDLabel = [[UILabel alloc] init];
-    _userIDLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
-    _userIDLabel.textColor = UIColor.systemTealColor;
-    _userIDLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [card addSubview:_userIDLabel];
-
-    _bioLabel = [[UILabel alloc] init];
-    _bioLabel.font = [UIFont systemFontOfSize:13];
-    _bioLabel.textColor = UIColor.secondaryLabelColor;
-    _bioLabel.numberOfLines = 1;
-    _bioLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [card addSubview:_bioLabel];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_panel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:40],
-        [_panel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-40],
-        [_panel.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
-        [_panel.heightAnchor constraintLessThanOrEqualToAnchor:self.view.heightAnchor constant:-160],
-        [_panel.heightAnchor constraintGreaterThanOrEqualToConstant:500],
-
-        [close.leadingAnchor constraintEqualToAnchor:_panel.leadingAnchor constant:18],
-        [close.topAnchor constraintEqualToAnchor:_panel.topAnchor constant:18],
-        [close.widthAnchor constraintEqualToConstant:36],
-        [close.heightAnchor constraintEqualToConstant:36],
-
-        [collapse.trailingAnchor constraintEqualToAnchor:_panel.trailingAnchor constant:-18],
-        [collapse.topAnchor constraintEqualToAnchor:_panel.topAnchor constant:18],
-        [collapse.widthAnchor constraintEqualToConstant:36],
-        [collapse.heightAnchor constraintEqualToConstant:36],
-
-        [card.leadingAnchor constraintEqualToAnchor:_panel.leadingAnchor constant:18],
-        [card.trailingAnchor constraintEqualToAnchor:_panel.trailingAnchor constant:-18],
-        [card.topAnchor constraintEqualToAnchor:close.bottomAnchor constant:16],
-        [card.heightAnchor constraintEqualToConstant:92],
-
-        [avatar.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:16],
-        [avatar.centerYAnchor constraintEqualToAnchor:card.centerYAnchor],
-        [avatar.widthAnchor constraintEqualToConstant:60],
-        [avatar.heightAnchor constraintEqualToConstant:60],
-
-        [avatarText.centerXAnchor constraintEqualToAnchor:avatar.centerXAnchor],
-        [avatarText.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
-
-        [_userNameLabel.leadingAnchor constraintEqualToAnchor:avatar.trailingAnchor constant:12],
-        [_userNameLabel.topAnchor constraintEqualToAnchor:card.topAnchor constant:13],
-        [_userNameLabel.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-14],
-
-        [_userIDLabel.leadingAnchor constraintEqualToAnchor:_userNameLabel.leadingAnchor],
-        [_userIDLabel.topAnchor constraintEqualToAnchor:_userNameLabel.bottomAnchor constant:3],
-        [_userIDLabel.trailingAnchor constraintEqualToAnchor:_userNameLabel.trailingAnchor],
-
-        [_bioLabel.leadingAnchor constraintEqualToAnchor:_userNameLabel.leadingAnchor],
-        [_bioLabel.topAnchor constraintEqualToAnchor:_userIDLabel.bottomAnchor constant:4],
-        [_bioLabel.trailingAnchor constraintEqualToAnchor:_userNameLabel.trailingAnchor],
-    ]];
-
-    UIButton *search = [UIButton buttonWithType:UIButtonTypeSystem];
-    [search setImage:[UIImage systemImageNamed:@"magnifyingglass"] forState:UIControlStateNormal];
-    search.tintColor = UIColor.whiteColor;
-    search.backgroundColor = UIColor.systemTealColor;
-    search.layer.cornerRadius = 15;
-    search.translatesAutoresizingMaskIntoConstraints = NO;
-    [_panel addSubview:search];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [search.centerXAnchor constraintEqualToAnchor:_panel.centerXAnchor],
-        [search.topAnchor constraintEqualToAnchor:card.bottomAnchor constant:10],
-        [search.widthAnchor constraintEqualToConstant:30],
-        [search.heightAnchor constraintEqualToConstant:30],
-    ]];
+    UILabel *title = [[UILabel alloc] init];
+    title.text = @"视频页面调整";
+    title.font = [UIFont boldSystemFontOfSize:21];
+    title.textAlignment = NSTextAlignmentCenter;
+    title.textColor = UIColor.labelColor;
+    title.translatesAutoresizingMaskIntoConstraints = NO;
+    [_panel addSubview:title];
 
     _scrollView = [[UIScrollView alloc] initWithFrame:CGRectZero];
     _scrollView.showsVerticalScrollIndicator = NO;
@@ -458,9 +368,27 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
     [_panel addSubview:_scrollView];
 
     [NSLayoutConstraint activateConstraints:@[
+        [_panel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:40],
+        [_panel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-40],
+        [_panel.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
+        [_panel.heightAnchor constraintEqualToConstant:610],
+
+        [close.leadingAnchor constraintEqualToAnchor:_panel.leadingAnchor constant:16],
+        [close.topAnchor constraintEqualToAnchor:_panel.topAnchor constant:16],
+        [close.widthAnchor constraintEqualToConstant:34],
+        [close.heightAnchor constraintEqualToConstant:34],
+
+        [collapse.trailingAnchor constraintEqualToAnchor:_panel.trailingAnchor constant:-16],
+        [collapse.topAnchor constraintEqualToAnchor:_panel.topAnchor constant:16],
+        [collapse.widthAnchor constraintEqualToConstant:34],
+        [collapse.heightAnchor constraintEqualToConstant:34],
+
+        [title.centerXAnchor constraintEqualToAnchor:_panel.centerXAnchor],
+        [title.centerYAnchor constraintEqualToAnchor:close.centerYAnchor],
+
         [_scrollView.leadingAnchor constraintEqualToAnchor:_panel.leadingAnchor constant:10],
         [_scrollView.trailingAnchor constraintEqualToAnchor:_panel.trailingAnchor constant:-10],
-        [_scrollView.topAnchor constraintEqualToAnchor:search.bottomAnchor constant:8],
+        [_scrollView.topAnchor constraintEqualToAnchor:close.bottomAnchor constant:12],
         [_scrollView.bottomAnchor constraintEqualToAnchor:_panel.bottomAnchor constant:-10],
     ]];
 
@@ -494,7 +422,7 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
         [NSLayoutConstraint activateConstraints:@[
             [row.leadingAnchor constraintEqualToAnchor:content.leadingAnchor],
             [row.trailingAnchor constraintEqualToAnchor:content.trailingAnchor],
-            [row.heightAnchor constraintEqualToConstant:72],
+            [row.heightAnchor constraintEqualToConstant:66],
         ]];
         if (previous) {
             [row.topAnchor constraintEqualToAnchor:previous.bottomAnchor].active = YES;
@@ -504,8 +432,6 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
         previous = row;
     }
     [previous.bottomAnchor constraintEqualToAnchor:content.bottomAnchor].active = YES;
-
-    [self reloadCurrentVideoInfo];
 }
 
 - (UIView *)makeRowWithTitle:(NSString *)title key:(NSString *)key type:(NSString *)type {
@@ -613,12 +539,14 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
         NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
         if (scale) {
-            [defaults setObject:@(1.0 + value) forKey:key];
+            NSString *storedScale = [NSString stringWithFormat:@"%.4f", 1.0 + value];
+            [defaults setObject:storedScale forKey:key];
         } else if (overlay.isTabBar) {
-            [defaults setObject:@(value) forKey:key];
+            [defaults setDouble:value forKey:key];
             DYYYFloatingPanelApplyTabBarDelta(value);
         } else {
-            [defaults setObject:@(value) forKey:key];
+            NSString *storedOffset = [NSString stringWithFormat:@"%.3f", value];
+            [defaults setObject:storedOffset forKey:key];
         }
 
         [defaults synchronize];
@@ -639,23 +567,37 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 - (void)refreshLiveLayout {
     UIWindow *window = DYYYPanelActiveWindow();
     if (!window) return;
-    void (^mark)(UIView *) = ^(UIView *view) {
-        [view setNeedsLayout];
-        for (UIView *sub in view.subviews) [sub setNeedsLayout];
-    };
-    mark(window);
-    [UIView performWithoutAnimation:^{
-        [window layoutIfNeeded];
-    }];
-}
 
-- (void)reloadCurrentVideoInfo {
-    id model = DYYYPanelCurrentAweme();
-    id author = DYYYPanelKVC(model, @"author");
-    _userNameLabel.text = DYYYPanelString(author, @[@"nickname", @"displayName"], @"当前视频");
-    NSString *uid = DYYYPanelString(author, @[@"userID", @"uid", @"uniqueID"], @"");
-    _userIDLabel.text = uid.length ? [NSString stringWithFormat:@"专属ID:%@", uid] : @"";
-    _bioLabel.text = DYYYPanelString(author, @[@"signature", @"bio"], @"实时调整视频页面元素");
+    UIView *targetView = window;
+    UIViewController *root = window.rootViewController;
+    NSMutableArray *queue = root ? [NSMutableArray arrayWithObject:root] : [NSMutableArray array];
+
+    while (queue.count) {
+        UIViewController *vc = queue.firstObject;
+        [queue removeObjectAtIndex:0];
+
+        if ([NSStringFromClass(vc.class) containsString:@"AWEPlayInteractionViewController"]) {
+            if (vc.viewIfLoaded) targetView = vc.view;
+            break;
+        }
+
+        [queue addObjectsFromArray:vc.childViewControllers];
+        if (vc.presentedViewController) [queue addObject:vc.presentedViewController];
+    }
+
+    __block void (^markNeedsLayout)(UIView *);
+    markNeedsLayout = ^(UIView *view) {
+        [view setNeedsLayout];
+        for (UIView *subview in [view.subviews copy]) {
+            markNeedsLayout(subview);
+        }
+    };
+
+    markNeedsLayout(targetView);
+
+    [UIView performWithoutAnimation:^{
+        [targetView layoutIfNeeded];
+    }];
 }
 
 - (void)collapsePanel {
@@ -663,7 +605,8 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 }
 
 - (void)closePanel {
-    [self dismissViewControllerAnimated:YES completion:nil];
+    [self.view removeFromSuperview];
+    gDYYYFloatingAdjustPanel = nil;
 }
 
 @end
@@ -692,14 +635,19 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 void DYYYShowFloatingAdjustPanel(UIViewController *presentingVC) {
-    if (!presentingVC) return;
-    UIViewController *top = DYYYPanelTopViewController(presentingVC);
-    if (!top || [top isKindOfClass:NSClassFromString(@"DYYYFloatingAdjustPanelViewController")]) return;
+    UIWindow *window = DYYYPanelActiveWindow();
+    if (!window) return;
+
+    if (gDYYYFloatingAdjustPanel.viewIfLoaded.superview) return;
 
     DYYYFloatingAdjustPanelViewController *panel = [[DYYYFloatingAdjustPanelViewController alloc] init];
-    panel.modalPresentationStyle = UIModalPresentationOverFullScreen;
-    [top presentViewController:panel animated:YES completion:nil];
+    gDYYYFloatingAdjustPanel = panel;
+
+    panel.view.frame = window.bounds;
+    panel.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [window addSubview:panel.view];
 }
 #ifdef __cplusplus
 }
