@@ -102,7 +102,7 @@ static void DYYYApplyLinkForAllOccurrences(NSMutableAttributedString *attributed
         DYYYApplyLinkForAllOccurrences(attributedString, @"@VexLabs1", @"https://t.me/VexLabs1");
         DYYYApplyLinkForAllOccurrences(attributedString, @"huami1314/DYYY", @"https://github.com/huami1314/DYYY");
         DYYYApplyLinkForAllOccurrences(attributedString, @"Wtrwx/DYYY", @"https://github.com/Wtrwx/DYYY");
-        DYYYApplyLinkForAllOccurrences(attributedString, @"VexCove/DYYY", @"https://github.com/VexCove/DYYY");
+        DYYYApplyLinkForAllOccurrences(attributedString, @"xiaoye-debug/DYYY", @"https://github.com/xiaoye-debug/DYYY");
         self.messageTextView.attributedText = attributedString;
 
         // 设置链接颜色
