@@ -88,7 +88,7 @@ static NSString *DYYYPanelString(id object, NSArray<NSString *> *keys, NSString 
 }
 
 static CGFloat DYYYPanelDoubleForKey(NSString *key, CGFloat fallback) {
-    id value = NSUserDefaults.standardUserDefaults[key];
+    id value = [[NSUserDefaults standardUserDefaults] objectForKey:key];
     return [value respondsToSelector:@selector(doubleValue)] ? [value doubleValue] : fallback;
 }
 
@@ -596,24 +596,20 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
         overlay.initialValue = DYYYPanelDoubleForKey(key, 0.0);
     }
 
-    __weak typeof(self) weakSelf = self;
     overlay.onChange = ^(CGFloat value) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
         if (scale) {
-            NSUserDefaults.standardUserDefaults[key] = @(1.0 + value);
+            [defaults setObject:@(1.0 + value) forKey:key];
         } else if (overlay.isTabBar) {
-            NSUserDefaults.standardUserDefaults[key] = @(value);
+            [defaults setObject:@(value) forKey:key];
             DYYYFloatingPanelApplyTabBarDelta(value);
         } else {
-            NSUserDefaults.standardUserDefaults[key] = @(value);
+            [defaults setObject:@(value) forKey:key];
         }
 
-        [NSUserDefaults.standardUserDefaults synchronize];
+        [defaults synchronize];
         [[NSNotificationCenter defaultCenter] postNotificationName:kDYYYPanelDidChangeNotification object:key];
-        [strongSelf refreshRows];
-        [strongSelf refreshLiveLayout];
     };
 
     [self.view addSubview:overlay];
@@ -662,7 +658,7 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 %hook AWENormalModeTabBar
 
 - (void)setFrame:(CGRect)frame {
-    CGFloat delta = [NSUserDefaults.standardUserDefaults[@"DYYYTabBarHeightAdjustment"] doubleValue];
+    CGFloat delta = [[[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYTabBarHeightAdjustment"] doubleValue];
     NSNumber *original = objc_getAssociatedObject(self, @selector(setFrame:));
     if (!original && frame.size.height > 20.0) {
         objc_setAssociatedObject(self, @selector(setFrame:), @(frame.size.height), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
