@@ -15107,6 +15107,86 @@ static void DYYYLogHidePlusOverlayOnce(NSString *target) {
 
 %end
 
+static NSInteger const kDYYYTabBarBackgroundImageViewTag = 260927;
+static NSInteger const kDYYYTabBarBackgroundGlassViewTag = 260928;
+static NSString * const kDYYYTabBarBackgroundImagePathKey = @"DYYYTabBarBackgroundImagePath";
+
+static NSString *DYYYTabBarBackgroundImagePath(void) {
+    NSString *stored = [[NSUserDefaults standardUserDefaults] stringForKey:kDYYYTabBarBackgroundImagePathKey];
+    if (stored.length > 0 && [[NSFileManager defaultManager] fileExistsAtPath:stored]) {
+        return stored;
+    }
+
+    NSString *library = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES).firstObject;
+    if (!library.length) return nil;
+    NSString *path = [library stringByAppendingPathComponent:@"DYYYTabBarBackground.jpg"];
+    return [[NSFileManager defaultManager] fileExistsAtPath:path] ? path : nil;
+}
+
+static UIImage *DYYYTabBarBackgroundImage(void) {
+    NSString *path = DYYYTabBarBackgroundImagePath();
+    return path.length ? [UIImage imageWithContentsOfFile:path] : nil;
+}
+
+static BOOL DYYYTabBarHasCustomBackground(void) {
+    return DYYYTabBarBackgroundImage() != nil;
+}
+
+static void DYYYRemoveTabBarBackground(UIView *bar) {
+    [[bar viewWithTag:kDYYYTabBarBackgroundGlassViewTag] removeFromSuperview];
+    [[bar viewWithTag:kDYYYTabBarBackgroundImageViewTag] removeFromSuperview];
+}
+
+static void DYYYApplyTabBarBackgroundAppearance(AWENormalModeTabBar *bar) {
+    if (!bar) return;
+
+    UIImage *image = DYYYTabBarBackgroundImage();
+    if (!image) {
+        DYYYRemoveTabBarBackground(bar);
+        return;
+    }
+
+    UIImageView *imageView = (UIImageView *)[bar viewWithTag:kDYYYTabBarBackgroundImageViewTag];
+    if (![imageView isKindOfClass:[UIImageView class]]) {
+        imageView = [[UIImageView alloc] initWithFrame:bar.bounds];
+        imageView.tag = kDYYYTabBarBackgroundImageViewTag;
+        imageView.contentMode = UIViewContentModeScaleAspectFill;
+        imageView.clipsToBounds = YES;
+        imageView.userInteractionEnabled = NO;
+        [bar insertSubview:imageView atIndex:0];
+    }
+    imageView.frame = bar.bounds;
+    if (imageView.image != image) imageView.image = image;
+    imageView.hidden = NO;
+
+    UIVisualEffectView *glass = (UIVisualEffectView *)[bar viewWithTag:kDYYYTabBarBackgroundGlassViewTag];
+    if (![glass isKindOfClass:[UIVisualEffectView class]]) {
+        glass = [[UIVisualEffectView alloc] initWithFrame:bar.bounds];
+        glass.tag = kDYYYTabBarBackgroundGlassViewTag;
+        glass.userInteractionEnabled = NO;
+        glass.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [bar insertSubview:glass aboveSubview:imageView];
+    }
+    glass.frame = bar.bounds;
+
+    if (@available(iOS 26.0, *)) {
+        UIGlassEffect *effect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleRegular];
+        effect.interactive = NO;
+        glass.effect = effect;
+        glass.backgroundColor = UIColor.clearColor;
+    } else {
+        glass.effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
+        glass.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.18];
+    }
+
+    [bar bringSubviewToFront:glass];
+    [bar sendSubviewToBack:imageView];
+
+    if (bar.skinContainerView) {
+        bar.skinContainerView.hidden = YES;
+    }
+}
+
 %hook AWENormalModeTabBar
 
 static Class barBackgroundClass = nil;
@@ -15162,6 +15242,8 @@ static Class tabBarButtonClass = nil;
 
 - (void)layoutSubviews {
     %orig;
+
+    DYYYApplyTabBarBackgroundAppearance(self);
 
     // 底栏高度必须在 Douyin 自己每次 layout 后重新落到 AWENormalModeTabBar，
     // 否则下一次 layout 会把浮动面板刚设置的 frame 恢复掉。
@@ -15289,6 +15371,9 @@ static Class tabBarButtonClass = nil;
 
         // 单次遍历处理所有背景和分割线
         for (UIView *subview in self.subviews) {
+            if (subview.tag == kDYYYTabBarBackgroundImageViewTag || subview.tag == kDYYYTabBarBackgroundGlassViewTag) {
+                continue;
+            }
             // 跳过底栏按钮
             if ([subview isKindOfClass:generalButtonClass] || [subview isKindOfClass:plusContainerButtonClass] || [subview isKindOfClass:plusButtonClass] ||
                 [subview isKindOfClass:plusInnerButtonClass]) {
@@ -15305,7 +15390,7 @@ static Class tabBarButtonClass = nil;
         }
     } else {
         if (self.skinContainerView) {
-            self.skinContainerView.hidden = NO;
+            self.skinContainerView.hidden = DYYYTabBarHasCustomBackground();
         }
 
         for (UIView *subview in self.subviews) {
@@ -15361,6 +15446,9 @@ static Class tabBarButtonClass = nil;
 
         // 处理所有背景和分割线
         for (UIView *subview in self.subviews) {
+            if (subview.tag == kDYYYTabBarBackgroundImageViewTag || subview.tag == kDYYYTabBarBackgroundGlassViewTag) {
+                continue;
+            }
             CGFloat subviewHeight = subview.frame.size.height;
             // 跳过底栏按钮
             if ([subview isKindOfClass:generalButtonClass] || [subview isKindOfClass:plusContainerButtonClass] || [subview isKindOfClass:plusButtonClass] ||
