@@ -2,6 +2,9 @@
 #import <objc/runtime.h>
 
 static NSString * const kDYYYPanelDidChangeNotification = @"DYYYFloatingPanelDidChangeNotification";
+
+// 与“界面设置 -> 修改底栏高度”共用同一个 DYYYTabBarHeight 配置。
+void DYYYApplyTabBarHeightSettingNow(void);
 static UIWindow *DYYYPanelActiveWindow(void) {
     UIWindow *window = nil;
     if (@available(iOS 13.0, *)) {
@@ -35,59 +38,6 @@ static UIViewController *DYYYPanelTopViewController(UIViewController *vc) {
         if (found && found.viewIfLoaded.window) return found;
     }
     return vc;
-}
-
-static char kDYYYVisualTabBarBaseTransformKey;
-
-static UIView *DYYYFindTabBarViewInView(UIView *view) {
-    if (!view) return nil;
-    if ([NSStringFromClass(view.class) isEqualToString:@"AWENormalModeTabBar"]) return view;
-    for (UIView *subview in [view.subviews copy]) {
-        UIView *found = DYYYFindTabBarViewInView(subview);
-        if (found) return found;
-    }
-    return nil;
-}
-
-static UIView *DYYYCurrentTabBarView(void) {
-    UIWindow *window = DYYYPanelActiveWindow();
-    if (!window) return nil;
-    return DYYYFindTabBarViewInView(window);
-}
-
-static void DYYYApplyVisualTabBarDelta(CGFloat delta) {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        UIView *tabBar = DYYYCurrentTabBarView();
-        if (!tabBar || tabBar.bounds.size.height < 20.0) return;
-
-        NSValue *saved = objc_getAssociatedObject(tabBar, &kDYYYVisualTabBarBaseTransformKey);
-        CGAffineTransform base = saved ? saved.CGAffineTransformValue : tabBar.transform;
-        if (!saved) {
-            objc_setAssociatedObject(tabBar,
-                                     &kDYYYVisualTabBarBaseTransformKey,
-                                     [NSValue valueWithCGAffineTransform:tabBar.transform],
-                                     OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        }
-
-        if (fabs(delta) < 0.01) {
-            tabBar.transform = base;
-            return;
-        }
-
-        CGFloat h = tabBar.bounds.size.height;
-        CGFloat targetHeight = MAX(12.0, h + delta);
-        CGFloat scaleY = targetHeight / h;
-
-        // 只改变底栏本身的视觉高度，底边保持原位置。
-        // 不修改 frame、safeArea、ABTest 或全局高度变量，因此不会推动昵称/文案/IP。
-        CGAffineTransform visual = CGAffineTransformMake(1.0,
-                                                         0.0,
-                                                         0.0,
-                                                         scaleY,
-                                                         0.0,
-                                                         (h - targetHeight) * 0.5);
-        tabBar.transform = CGAffineTransformConcat(base, visual);
-    });
 }
 
 static id DYYYPanelKVC(id object, NSString *key) {
@@ -344,9 +294,6 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
                                                  name:kDYYYPanelDidChangeNotification
                                                object:nil];
     [self buildUI];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        DYYYApplyVisualTabBarDelta(DYYYPanelDoubleForKey(@"DYYYTabBarHeightAdjustment", 0.0));
-    });
 }
 
 - (void)dealloc {
@@ -487,7 +434,7 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     [row addSubview:detail];
 
     UILabel *sub = [[UILabel alloc] init];
-    sub.text = [type isEqualToString:@"scale"] ? @"0 = 默认大小" : ([type isEqualToString:@"tabbar"] ? @"0 = 默认底栏高度" : @"0 = 默认位置");
+    sub.text = [type isEqualToString:@"scale"] ? @"0 = 默认大小" : ([type isEqualToString:@"tabbar"] ? @"0 = 默认高度（49pt）" : @"0 = 默认位置");
     sub.font = [UIFont systemFontOfSize:11];
     sub.textColor = UIColor.tertiaryLabelColor;
     sub.translatesAutoresizingMaskIntoConstraints = NO;
@@ -554,9 +501,13 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
         overlay.maximum = 1.0;
         overlay.initialValue = DYYYPanelScaleDeltaForKey(key);
     } else if (overlay.isTabBar) {
+        // 这里显示的是“相对默认底栏高度的增量”，但真正写入的是
+        // 界面设置使用的 DYYYTabBarHeight 绝对高度值。
         overlay.minimum = -30.0;
         overlay.maximum = 60.0;
-        overlay.initialValue = DYYYPanelDoubleForKey(key, 0.0);
+        NSString *heightString = [[NSUserDefaults standardUserDefaults] stringForKey:@"DYYYTabBarHeight"];
+        CGFloat currentHeight = heightString.length ? heightString.doubleValue : 49.0;
+        overlay.initialValue = currentHeight - 49.0;
     } else {
         overlay.minimum = -80.0;
         overlay.maximum = 80.0;
@@ -570,8 +521,14 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
             NSString *storedScale = [NSString stringWithFormat:@"%.4f", 1.0 + value];
             [defaults setObject:storedScale forKey:key];
         } else if (overlay.isTabBar) {
-            [defaults setDouble:value forKey:key];
-            DYYYApplyVisualTabBarDelta(value);
+            // DYYYSettings.xm 的“修改底栏高度”实际保存的是绝对高度，
+            // 不是 delta，更不能用 transform 拉伸字体。
+            // 这里以 49pt 为默认内容高度：0 = 49pt，+11 = 60pt，-10 = 39pt。
+            CGFloat targetHeight = MAX(30.0, MIN(109.0, 49.0 + value));
+            [defaults setObject:[NSString stringWithFormat:@"%.1f", targetHeight]
+                          forKey:@"DYYYTabBarHeight"];
+            [defaults removeObjectForKey:@"DYYYTabBarHeightAdjustment"];
+            DYYYApplyTabBarHeightSettingNow();
         } else {
             NSString *storedOffset = [NSString stringWithFormat:@"%.3f", value];
             [defaults setObject:storedOffset forKey:key];
