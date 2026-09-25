@@ -41,6 +41,7 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = DYYY
 
 DYYY_FILES = DYYY.xm \
+	Sources/UI/DYYYFloatingAdjustPanel.xm \
 	DYYYFloatClearButton.xm \
 	DYYYSettings.xm \
 	DYYYABTestHook.xm \
