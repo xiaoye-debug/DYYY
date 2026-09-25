@@ -44,6 +44,15 @@
 #import "DYYYMiniProgramRewardBypass.h"
 #import "DYYYPrivacyRecordUploadGuard.h"
 #import "DYYYSettingViewController.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+void DYYYShowFloatingAdjustPanel(UIViewController *presentingVC);
+void DYYYFloatingPanelApplyTabBarDelta(CGFloat delta);
+#ifdef __cplusplus
+}
+#endif
 #import "DYYYToast.h"
 #import "DYYYUtils.h"
 
@@ -4927,49 +4936,7 @@ static void DYYYSyncHiddenFeedAnchorArrangedView(UIView *inner);
     if (gesture.state == UIGestureRecognizerStateBegan) {
         UIViewController *rootViewController = self.rootViewController;
         if (rootViewController) {
-            UIViewController *settingVC = [[DYYYSettingViewController alloc] init];
-
-            if (settingVC) {
-                BOOL isIPad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
-                if (@available(iOS 15.0, *)) {
-                    if (!isIPad) {
-                        settingVC.modalPresentationStyle = UIModalPresentationPageSheet;
-                    } else {
-                        settingVC.modalPresentationStyle = UIModalPresentationFullScreen;
-                    }
-                } else {
-                    settingVC.modalPresentationStyle = UIModalPresentationFullScreen;
-                }
-
-                if (settingVC.modalPresentationStyle == UIModalPresentationFullScreen) {
-                    UIButton *closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-                    [closeButton setTitle:@"关闭" forState:UIControlStateNormal];
-                    closeButton.translatesAutoresizingMaskIntoConstraints = NO;
-
-                    [settingVC.view addSubview:closeButton];
-
-                    [NSLayoutConstraint activateConstraints:@[
-                        [closeButton.trailingAnchor constraintEqualToAnchor:settingVC.view.trailingAnchor constant:-10],
-                        [closeButton.topAnchor constraintEqualToAnchor:settingVC.view.topAnchor constant:40], [closeButton.widthAnchor constraintEqualToConstant:80],
-                        [closeButton.heightAnchor constraintEqualToConstant:40]
-                    ]];
-
-                    [closeButton addTarget:self action:@selector(closeSettings:) forControlEvents:UIControlEventTouchUpInside];
-                }
-
-                UIView *handleBar = [[UIView alloc] init];
-                handleBar.backgroundColor = [UIColor whiteColor];
-                handleBar.layer.cornerRadius = 2.5;
-                handleBar.translatesAutoresizingMaskIntoConstraints = NO;
-                [settingVC.view addSubview:handleBar];
-
-                [NSLayoutConstraint activateConstraints:@[
-                    [handleBar.centerXAnchor constraintEqualToAnchor:settingVC.view.centerXAnchor], [handleBar.topAnchor constraintEqualToAnchor:settingVC.view.topAnchor constant:8],
-                    [handleBar.widthAnchor constraintEqualToConstant:40], [handleBar.heightAnchor constraintEqualToConstant:5]
-                ]];
-
-                [rootViewController presentViewController:settingVC animated:YES completion:nil];
-            }
+            DYYYShowFloatingAdjustPanel(rootViewController);
         }
     }
 }
@@ -4980,6 +4947,19 @@ static void DYYYSyncHiddenFeedAnchorArrangedView(UIView *inner);
 }
 
 %end
+
+void DYYYFloatingPanelApplyTabBarDelta(CGFloat delta) {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setDouble:delta forKey:@"DYYYTabBarHeightAdjustment"];
+    if (originalTabBarHeight != kInvalidHeight) {
+        gCurrentTabBarHeight = MAX(1.0, originalTabBarHeight + delta);
+    }
+    UIWindow *window = [DYYYUtils getActiveWindow];
+    if (window) {
+        [window setNeedsLayout];
+        [window layoutIfNeeded];
+    }
+}
 
 %end
 
