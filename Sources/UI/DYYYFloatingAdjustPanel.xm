@@ -2,6 +2,41 @@
 #import <objc/runtime.h>
 
 static NSString * const kDYYYPanelDidChangeNotification = @"DYYYFloatingPanelDidChangeNotification";
+static UIWindow *DYYYPanelActiveWindow(void) {
+    UIWindow *window = nil;
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if (scene.activationState != UISceneActivationStateForegroundActive) continue;
+            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+            for (UIWindow *candidate in ((UIWindowScene *)scene).windows) {
+                if (!candidate.hidden && candidate.alpha > 0.01 && candidate.windowLevel == UIWindowLevelNormal) {
+                    if (candidate.isKeyWindow) return candidate;
+                    if (!window) window = candidate;
+                }
+            }
+        }
+    }
+    return window ?: UIApplication.sharedApplication.keyWindow;
+}
+
+static UIViewController *DYYYPanelTopViewController(UIViewController *vc) {
+    if (!vc) return nil;
+    while (vc.presentedViewController && !vc.presentedViewController.isBeingDismissed) {
+        vc = vc.presentedViewController;
+    }
+    if ([vc isKindOfClass:[UINavigationController class]]) {
+        return DYYYPanelTopViewController(((UINavigationController *)vc).visibleViewController ?: vc);
+    }
+    if ([vc isKindOfClass:[UITabBarController class]]) {
+        return DYYYPanelTopViewController(((UITabBarController *)vc).selectedViewController ?: vc);
+    }
+    for (UIViewController *child in vc.childViewControllers.reverseObjectEnumerator) {
+        UIViewController *found = DYYYPanelTopViewController(child);
+        if (found && found.viewIfLoaded.window) return found;
+    }
+    return vc;
+}
+
 static char kDYYYVisualTabBarBaseTransformKey;
 
 static UIView *DYYYFindTabBarViewInView(UIView *view) {
@@ -53,41 +88,6 @@ static void DYYYApplyVisualTabBarDelta(CGFloat delta) {
                                                          (h - targetHeight) * 0.5);
         tabBar.transform = CGAffineTransformConcat(base, visual);
     });
-}
-
-static UIWindow *DYYYPanelActiveWindow(void) {
-    UIWindow *window = nil;
-    if (@available(iOS 13.0, *)) {
-        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-            if (scene.activationState != UISceneActivationStateForegroundActive) continue;
-            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
-            for (UIWindow *candidate in ((UIWindowScene *)scene).windows) {
-                if (!candidate.hidden && candidate.alpha > 0.01 && candidate.windowLevel == UIWindowLevelNormal) {
-                    if (candidate.isKeyWindow) return candidate;
-                    if (!window) window = candidate;
-                }
-            }
-        }
-    }
-    return window ?: UIApplication.sharedApplication.keyWindow;
-}
-
-static UIViewController *DYYYPanelTopViewController(UIViewController *vc) {
-    if (!vc) return nil;
-    while (vc.presentedViewController && !vc.presentedViewController.isBeingDismissed) {
-        vc = vc.presentedViewController;
-    }
-    if ([vc isKindOfClass:[UINavigationController class]]) {
-        return DYYYPanelTopViewController(((UINavigationController *)vc).visibleViewController ?: vc);
-    }
-    if ([vc isKindOfClass:[UITabBarController class]]) {
-        return DYYYPanelTopViewController(((UITabBarController *)vc).selectedViewController ?: vc);
-    }
-    for (UIViewController *child in vc.childViewControllers.reverseObjectEnumerator) {
-        UIViewController *found = DYYYPanelTopViewController(child);
-        if (found && found.viewIfLoaded.window) return found;
-    }
-    return vc;
 }
 
 static id DYYYPanelKVC(id object, NSString *key) {
