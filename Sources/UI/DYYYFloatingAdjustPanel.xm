@@ -4,7 +4,7 @@
 static NSString * const kDYYYPanelDidChangeNotification = @"DYYYFloatingPanelDidChangeNotification";
 
 // 与“界面设置 -> 修改底栏高度”共用同一个 DYYYTabBarHeight 配置。
-void DYYYApplyTabBarHeightSettingNow(void);
+extern "C" void DYYYApplyTabBarHeightSettingNow(void);
 static UIWindow *DYYYPanelActiveWindow(void) {
     UIWindow *window = nil;
     if (@available(iOS 13.0, *)) {
