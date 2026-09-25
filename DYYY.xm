@@ -4949,8 +4949,6 @@ static void DYYYSyncHiddenFeedAnchorArrangedView(UIView *inner);
 %end
 
 void DYYYFloatingPanelApplyTabBarDelta(CGFloat delta) {
-    // 与“界面设置 -> 修改底栏高度”共用真实绝对高度值。
-    // 浮动面板以 49pt 内容高度为 0 基准，正负值表示增减。
     CGFloat contentHeight = MAX(30.0, MIN(109.0, 49.0 + delta));
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -4966,29 +4964,19 @@ void DYYYFloatingPanelApplyTabBarDelta(CGFloat delta) {
         if (!tabBarClass) return;
 
         NSArray *bars = [DYYYUtils findAllSubviewsOfClass:tabBarClass inContainer:window];
-        CGFloat targetTotalHeight = contentHeight + window.safeAreaInsets.bottom;
+        CGFloat targetHeight = contentHeight + window.safeAreaInsets.bottom;
 
         for (UIView *bar in bars) {
-            if ([bar respondsToSelector:@selector(initializeOriginalTabBarHeight)]) {
-                @try {
-                    ((void (*)(id, SEL))objc_msgSend)(bar, @selector(initializeOriginalTabBarHeight));
-                } @catch (__unused NSException *exception) {
-                }
-            }
-
             UIView *superview = bar.superview;
             if (!superview || superview.bounds.size.height <= 0.0) continue;
 
             CGRect frame = bar.frame;
-            frame.size.height = targetTotalHeight;
-            frame.origin.y = MAX(0.0, CGRectGetHeight(superview.bounds) - targetTotalHeight);
+            frame.size.height = targetHeight;
+            frame.origin.y = MAX(0.0, CGRectGetHeight(superview.bounds) - targetHeight);
 
-            gCurrentTabBarHeight = targetTotalHeight;
+            gCurrentTabBarHeight = targetHeight;
             [bar setFrame:frame];
             [bar setNeedsLayout];
-            [bar layoutIfNeeded];
-            [superview setNeedsLayout];
-            [superview layoutIfNeeded];
         }
 
         [window setNeedsLayout];
@@ -15174,6 +15162,25 @@ static Class tabBarButtonClass = nil;
 
 - (void)layoutSubviews {
     %orig;
+
+    // 底栏高度必须在 Douyin 自己每次 layout 后重新落到 AWENormalModeTabBar，
+    // 否则下一次 layout 会把浮动面板刚设置的 frame 恢复掉。
+    NSString *heightString = [[NSUserDefaults standardUserDefaults] stringForKey:@"DYYYTabBarHeight"];
+    CGFloat configuredContentHeight = heightString.length ? heightString.doubleValue : 0.0;
+    if (configuredContentHeight > 0.0 && self.window) {
+        CGFloat targetHeight = configuredContentHeight + self.window.safeAreaInsets.bottom;
+        UIView *superview = self.superview;
+        if (superview && superview.bounds.size.height > 0.0 && targetHeight > 0.0) {
+            CGRect targetFrame = self.frame;
+            targetFrame.size.height = targetHeight;
+            targetFrame.origin.y = MAX(0.0, CGRectGetHeight(superview.bounds) - targetHeight);
+            if (fabs(targetFrame.size.height - self.frame.size.height) > 0.1 ||
+                fabs(targetFrame.origin.y - self.frame.origin.y) > 0.1) {
+                self.frame = targetFrame;
+            }
+            gCurrentTabBarHeight = targetHeight;
+        }
+    }
 
     if (originalTabBarHeight == kInvalidHeight) {
         NSLog(@"[DYYY] layoutSubviews: Fallback! originalTabBarHeight initialization triggered.");
