@@ -689,6 +689,9 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 
 %end
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void DYYYShowFloatingAdjustPanel(UIViewController *presentingVC) {
     if (!presentingVC) return;
     UIViewController *top = DYYYPanelTopViewController(presentingVC);
@@ -698,3 +701,6 @@ void DYYYShowFloatingAdjustPanel(UIViewController *presentingVC) {
     panel.modalPresentationStyle = UIModalPresentationOverFullScreen;
     [top presentViewController:panel animated:YES completion:nil];
 }
+#ifdef __cplusplus
+}
+#endif
