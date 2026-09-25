@@ -4,7 +4,7 @@
 static NSString * const kDYYYPanelDidChangeNotification = @"DYYYFloatingPanelDidChangeNotification";
 
 // 与“界面设置 -> 修改底栏高度”共用同一个 DYYYTabBarHeight 配置。
-extern "C" void DYYYApplyTabBarHeightSettingNow(void);
+extern "C" void DYYYFloatingPanelApplyTabBarDelta(CGFloat delta);
 static UIWindow *DYYYPanelActiveWindow(void) {
     UIWindow *window = nil;
     if (@available(iOS 13.0, *)) {
@@ -309,14 +309,15 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     self.view.backgroundColor = UIColor.clearColor;
 
     _panel = [[UIView alloc] initWithFrame:CGRectZero];
-    _panel.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits) {
-        return traits.userInterfaceStyle == UIUserInterfaceStyleDark
-            ? [UIColor colorWithWhite:0.12 alpha:0.88]
-            : [UIColor colorWithWhite:0.96 alpha:0.90];
-    }];
-    _panel.layer.cornerRadius = 24;
+    _panel.backgroundColor = UIColor.clearColor;
+    _panel.layer.cornerRadius = 26;
     _panel.layer.borderWidth = 0.8;
-    _panel.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.28].CGColor;
+    _panel.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.20].CGColor;
+
+    UIVisualEffectView *panelBlur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterialDark]];
+    panelBlur.translatesAutoresizingMaskIntoConstraints = NO;
+    panelBlur.userInteractionEnabled = NO;
+    [_panel addSubview:panelBlur];
     _panel.layer.shadowColor = UIColor.blackColor.CGColor;
     _panel.layer.shadowOpacity = 0.18;
     _panel.layer.shadowRadius = 16;
@@ -328,19 +329,28 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     close.backgroundColor = [UIColor colorWithRed:0.95 green:0.22 blue:0.22 alpha:0.70];
     close.layer.cornerRadius = 17;
     [close setTitle:@"×" forState:UIControlStateNormal];
-    [close setTitleColor:[UIColor colorWithRed:0.45 green:0.02 blue:0.02 alpha:1] forState:UIControlStateNormal];
-    close.titleLabel.font = [UIFont systemFontOfSize:25 weight:UIFontWeightMedium];
+    [close setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
+    close.titleLabel.font = [UIFont systemFontOfSize:22 weight:UIFontWeightMedium];
+    close.backgroundColor = [UIColor colorWithWhite:1 alpha:0.10];
     close.translatesAutoresizingMaskIntoConstraints = NO;
     [close addTarget:self action:@selector(closePanel) forControlEvents:UIControlEventTouchUpInside];
     [_panel addSubview:close];
 
     UILabel *title = [[UILabel alloc] init];
     title.text = @"视频页面调整";
-    title.font = [UIFont boldSystemFontOfSize:21];
+    title.font = [UIFont systemFontOfSize:21 weight:UIFontWeightBold];
     title.textAlignment = NSTextAlignmentCenter;
     title.textColor = UIColor.labelColor;
     title.translatesAutoresizingMaskIntoConstraints = NO;
     [_panel addSubview:title];
+
+    UILabel *headerSub = [[UILabel alloc] init];
+    headerSub.text = @"双指长按打开 · 调整即时生效";
+    headerSub.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
+    headerSub.textColor = UIColor.secondaryLabelColor;
+    headerSub.textAlignment = NSTextAlignmentCenter;
+    headerSub.translatesAutoresizingMaskIntoConstraints = NO;
+    [_panel addSubview:headerSub];
 
     _scrollView = [[UIScrollView alloc] initWithFrame:CGRectZero];
     _scrollView.showsVerticalScrollIndicator = NO;
@@ -353,6 +363,11 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
         [_panel.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
         [_panel.heightAnchor constraintEqualToConstant:520],
 
+        [panelBlur.leadingAnchor constraintEqualToAnchor:_panel.leadingAnchor],
+        [panelBlur.trailingAnchor constraintEqualToAnchor:_panel.trailingAnchor],
+        [panelBlur.topAnchor constraintEqualToAnchor:_panel.topAnchor],
+        [panelBlur.bottomAnchor constraintEqualToAnchor:_panel.bottomAnchor],
+
         [close.leadingAnchor constraintEqualToAnchor:_panel.leadingAnchor constant:16],
         [close.topAnchor constraintEqualToAnchor:_panel.topAnchor constant:16],
         [close.widthAnchor constraintEqualToConstant:34],
@@ -360,10 +375,12 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
 
         [title.centerXAnchor constraintEqualToAnchor:_panel.centerXAnchor],
         [title.centerYAnchor constraintEqualToAnchor:close.centerYAnchor],
+        [headerSub.centerXAnchor constraintEqualToAnchor:_panel.centerXAnchor],
+        [headerSub.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:1],
 
         [_scrollView.leadingAnchor constraintEqualToAnchor:_panel.leadingAnchor constant:10],
         [_scrollView.trailingAnchor constraintEqualToAnchor:_panel.trailingAnchor constant:-10],
-        [_scrollView.topAnchor constraintEqualToAnchor:close.bottomAnchor constant:12],
+        [_scrollView.topAnchor constraintEqualToAnchor:headerSub.bottomAnchor constant:12],
         [_scrollView.bottomAnchor constraintEqualToAnchor:_panel.bottomAnchor constant:-10],
     ]];
 
@@ -412,30 +429,58 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
 - (UIView *)makeRowWithTitle:(NSString *)title key:(NSString *)key type:(NSString *)type {
     UIButton *row = [UIButton buttonWithType:UIButtonTypeSystem];
     row.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-    row.backgroundColor = [UIColor colorWithWhite:1 alpha:0.12];
-    row.layer.cornerRadius = 18;
+    row.backgroundColor = [UIColor colorWithWhite:1 alpha:0.07];
+    row.layer.cornerRadius = 16;
+    row.layer.borderWidth = 0.5;
+    row.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.10].CGColor;
     row.translatesAutoresizingMaskIntoConstraints = NO;
     row.accessibilityIdentifier = key;
     [row addTarget:self action:@selector(rowTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [row addTarget:self action:@selector(rowTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [row addTarget:self action:@selector(rowTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+
+    UIView *iconBg = [[UIView alloc] init];
+    iconBg.backgroundColor = [UIColor colorWithRed:0.18 green:0.52 blue:1.0 alpha:0.16];
+    iconBg.layer.cornerRadius = 16;
+    iconBg.translatesAutoresizingMaskIntoConstraints = NO;
+    [row addSubview:iconBg];
+
+    NSString *symbolName =
+        [key isEqualToString:@"DYYYElementScale"] ? @"sidebar.right" :
+        [key isEqualToString:@"DYYYNicknameScale"] ? @"person.crop.circle" :
+        [key isEqualToString:@"DYYYDescriptionScale"] ? @"text.alignleft" :
+        [key isEqualToString:@"DYYYIPLabelScale"] ? @"mappin.and.ellipse" :
+        [key isEqualToString:@"DYYYNicknameVerticalOffset"] ? @"arrow.up.and.down.text.horizontal" :
+        [key isEqualToString:@"DYYYDescriptionVerticalOffset"] ? @"text.alignleft" :
+        [key isEqualToString:@"DYYYIPLabelVerticalOffset"] ? @"location.north.line" :
+        @"rectangle.bottomhalf.inset.filled";
+    UIImageView *icon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:symbolName]];
+    icon.tintColor = [UIColor colorWithRed:0.35 green:0.72 blue:1.0 alpha:1.0];
+    icon.contentMode = UIViewContentModeScaleAspectFit;
+    icon.translatesAutoresizingMaskIntoConstraints = NO;
+    [iconBg addSubview:icon];
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.text = title;
-    titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    titleLabel.font = [UIFont systemFontOfSize:15.5 weight:UIFontWeightSemibold];
     titleLabel.textColor = UIColor.labelColor;
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:titleLabel];
 
     UILabel *detail = [[UILabel alloc] init];
     detail.tag = 9001;
-    detail.font = [UIFont monospacedDigitSystemFontOfSize:15 weight:UIFontWeightMedium];
-    detail.textColor = UIColor.secondaryLabelColor;
-    detail.textAlignment = NSTextAlignmentRight;
+    detail.font = [UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightSemibold];
+    detail.textColor = [UIColor colorWithRed:0.35 green:0.72 blue:1.0 alpha:1.0];
+    detail.textAlignment = NSTextAlignmentCenter;
+    detail.backgroundColor = [UIColor colorWithRed:0.18 green:0.52 blue:1.0 alpha:0.12];
+    detail.layer.cornerRadius = 9;
+    detail.clipsToBounds = YES;
     detail.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:detail];
 
     UILabel *sub = [[UILabel alloc] init];
-    sub.text = [type isEqualToString:@"scale"] ? @"0 = 默认大小" : ([type isEqualToString:@"tabbar"] ? @"0 = 默认高度（49pt）" : @"0 = 默认位置");
-    sub.font = [UIFont systemFontOfSize:11];
+    sub.text = [type isEqualToString:@"scale"] ? @"缩放 · 0 为默认" : ([type isEqualToString:@"tabbar"] ? @"高度 · 0 为默认" : @"位置 · 0 为默认");
+    sub.font = [UIFont systemFontOfSize:10.5];
     sub.textColor = UIColor.tertiaryLabelColor;
     sub.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:sub];
@@ -446,23 +491,44 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     [row addSubview:arrow];
 
     [NSLayoutConstraint activateConstraints:@[
-        [titleLabel.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:18],
-        [titleLabel.topAnchor constraintEqualToAnchor:row.topAnchor constant:13],
+        [iconBg.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:10],
+        [iconBg.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [iconBg.widthAnchor constraintEqualToConstant:32],
+        [iconBg.heightAnchor constraintEqualToConstant:32],
+        [icon.leadingAnchor constraintEqualToAnchor:iconBg.leadingAnchor constant:8],
+        [icon.trailingAnchor constraintEqualToAnchor:iconBg.trailingAnchor constant:-8],
+        [icon.topAnchor constraintEqualToAnchor:iconBg.topAnchor constant:8],
+        [icon.bottomAnchor constraintEqualToAnchor:iconBg.bottomAnchor constant:-8],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:iconBg.trailingAnchor constant:11],
+        [titleLabel.topAnchor constraintEqualToAnchor:row.topAnchor constant:10],
         [titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:detail.leadingAnchor constant:-8],
         [sub.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [sub.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:3],
-        [detail.trailingAnchor constraintEqualToAnchor:arrow.leadingAnchor constant:-10],
-        [detail.centerYAnchor constraintEqualToAnchor:titleLabel.centerYAnchor],
-        [arrow.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-16],
+        [sub.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:2],
+        [detail.trailingAnchor constraintEqualToAnchor:arrow.leadingAnchor constant:-7],
+        [detail.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
+        [detail.heightAnchor constraintEqualToConstant:24],
+        [detail.widthAnchor constraintGreaterThanOrEqualToConstant:48],
+        [arrow.trailingAnchor constraintEqualToAnchor:row.trailingAnchor constant:-12],
         [arrow.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [arrow.widthAnchor constraintEqualToConstant:12],
-        [arrow.heightAnchor constraintEqualToConstant:18],
+        [arrow.widthAnchor constraintEqualToConstant:10],
+        [arrow.heightAnchor constraintEqualToConstant:16],
     ]];
-
     [self updateRow:row];
     return row;
 }
 
+- (void)rowTouchDown:(UIButton *)row {
+    [UIView animateWithDuration:0.08 animations:^{
+        row.alpha = 0.72;
+        row.transform = CGAffineTransformMakeScale(0.985, 0.985);
+    }];
+}
+- (void)rowTouchUp:(UIButton *)row {
+    [UIView animateWithDuration:0.16 animations:^{
+        row.alpha = 1.0;
+        row.transform = CGAffineTransformIdentity;
+    }];
+}
 - (void)updateRow:(UIButton *)row {
     NSString *key = row.accessibilityIdentifier;
     UILabel *detail = [row viewWithTag:9001];
@@ -528,7 +594,7 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
             [defaults setObject:[NSString stringWithFormat:@"%.1f", targetHeight]
                           forKey:@"DYYYTabBarHeight"];
             [defaults removeObjectForKey:@"DYYYTabBarHeightAdjustment"];
-            DYYYApplyTabBarHeightSettingNow();
+            DYYYFloatingPanelApplyTabBarDelta(value);
         } else {
             NSString *storedOffset = [NSString stringWithFormat:@"%.3f", value];
             [defaults setObject:storedOffset forKey:key];
