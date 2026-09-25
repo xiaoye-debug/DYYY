@@ -97,6 +97,54 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
         : [NSString stringWithFormat:@"%+.1f", value];
 }
 
+
+#pragma mark - DYYY Liquid Glass
+
+static UIView *DYYYMakeLiquidGlassView(CGRect frame, BOOL interactive) {
+    UIVisualEffectView *glass = nil;
+    if (@available(iOS 26.0, *)) {
+        UIGlassEffect *effect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleRegular];
+        effect.interactive = interactive;
+        glass = [[UIVisualEffectView alloc] initWithEffect:effect];
+    } else {
+        UIBlurEffect *effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
+        glass = [[UIVisualEffectView alloc] initWithEffect:effect];
+        glass.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.28];
+    }
+    glass.frame = frame;
+    glass.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    glass.userInteractionEnabled = NO;
+    glass.layer.cornerCurve = kCACornerCurveContinuous;
+    glass.layer.masksToBounds = YES;
+    return glass;
+}
+
+static void DYYYInstallLiquidGlass(UIView *container, CGFloat radius, BOOL interactive) {
+    UIView *glass = DYYYMakeLiquidGlassView(container.bounds, interactive);
+    glass.layer.cornerRadius = radius;
+    glass.frame = container.bounds;
+    [container insertSubview:glass atIndex:0];
+
+    container.backgroundColor = [UIColor clearColor];
+    container.layer.cornerRadius = radius;
+    container.layer.cornerCurve = kCACornerCurveContinuous;
+    container.layer.masksToBounds = YES;
+
+    if (@available(iOS 26.0, *)) {
+        // 原生 Liquid Glass 自带高光与边缘折射；只补一层极淡的动态描边。
+        container.layer.borderWidth = 0.5;
+        container.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.16].CGColor;
+    } else {
+        container.layer.borderWidth = 0.7;
+        container.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.20].CGColor;
+    }
+}
+
+static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
+    DYYYInstallLiquidGlass(button, radius, YES);
+    button.layer.borderWidth = 0.0;
+}
+
 @interface DYYYFloatingSliderOverlay : UIView
 @property(nonatomic, copy) NSString *title;
 @property(nonatomic, copy) NSString *key;
@@ -116,11 +164,12 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
     self.backgroundColor = UIColor.clearColor;
 
     UIView *card = [[UIView alloc] initWithFrame:CGRectZero];
-    card.backgroundColor = [UIColor colorWithWhite:0.055 alpha:0.98];
-    card.layer.cornerRadius = 22.0;
+    card.backgroundColor = UIColor.clearColor;
+    card.layer.cornerRadius = 24.0;
     card.layer.masksToBounds = YES;
     card.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:card];
+    DYYYInstallLiquidGlass(card, 24.0, NO);
 
     UILabel *title = [[UILabel alloc] init];
     title.text = self.title;
@@ -190,20 +239,22 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
     UIButton *reset = [UIButton buttonWithType:UIButtonTypeSystem];
     [reset setTitle:@"恢复默认值  0" forState:UIControlStateNormal];
     reset.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
-    reset.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
-    reset.layer.cornerRadius = 12;
+    reset.backgroundColor = UIColor.clearColor;
+    reset.layer.cornerRadius = 14;
     reset.translatesAutoresizingMaskIntoConstraints = NO;
     [reset addTarget:self action:@selector(resetTapped) forControlEvents:UIControlEventTouchUpInside];
     [card addSubview:reset];
+    DYYYStyleGlassButton(reset, 14.0);
 
     UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
     [close setTitle:@"关闭" forState:UIControlStateNormal];
     close.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
-    close.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
-    close.layer.cornerRadius = 12;
+    close.backgroundColor = UIColor.clearColor;
+    close.layer.cornerRadius = 14;
     close.translatesAutoresizingMaskIntoConstraints = NO;
     [close addTarget:self action:@selector(closeTapped) forControlEvents:UIControlEventTouchUpInside];
     [card addSubview:close];
+    DYYYStyleGlassButton(close, 14.0);
 
     [NSLayoutConstraint activateConstraints:@[
         [card.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:24],
@@ -303,22 +354,24 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     self.view.backgroundColor = UIColor.clearColor;
 
     _panel = [[UIView alloc] initWithFrame:CGRectZero];
-    // 不再使用 UIBlurEffect：避免毛玻璃导致整块灰蒙蒙，以及圆角四角出现浅色尖角。
-    _panel.backgroundColor = [UIColor colorWithWhite:0.055 alpha:0.97];
-    _panel.layer.cornerRadius = 24.0;
+    _panel.backgroundColor = UIColor.clearColor;
+    _panel.layer.cornerRadius = 30.0;
+    _panel.layer.cornerCurve = kCACornerCurveContinuous;
     _panel.layer.masksToBounds = YES;
     _panel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:_panel];
+    DYYYInstallLiquidGlass(_panel, 30.0, NO);
 
     UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
-    close.layer.cornerRadius = 17;
-    close.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
+    close.layer.cornerRadius = 18;
+    close.backgroundColor = UIColor.clearColor;
     [close setTitle:@"×" forState:UIControlStateNormal];
     [close setTitleColor:[UIColor colorWithWhite:1.0 alpha:0.86] forState:UIControlStateNormal];
     close.titleLabel.font = [UIFont systemFontOfSize:21 weight:UIFontWeightMedium];
     close.translatesAutoresizingMaskIntoConstraints = NO;
     [close addTarget:self action:@selector(closePanel) forControlEvents:UIControlEventTouchUpInside];
     [_panel addSubview:close];
+    DYYYStyleGlassButton(close, 18.0);
 
     UILabel *title = [[UILabel alloc] init];
     title.text = @"视频页面调整";
@@ -342,10 +395,10 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     [_panel addSubview:_scrollView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_panel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:40],
-        [_panel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-40],
+        [_panel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:22],
+        [_panel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-22],
         [_panel.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
-        [_panel.heightAnchor constraintEqualToConstant:520],
+        [_panel.heightAnchor constraintEqualToConstant:540],
 
         [close.leadingAnchor constraintEqualToAnchor:_panel.leadingAnchor constant:16],
         [close.topAnchor constraintEqualToAnchor:_panel.topAnchor constant:16],
@@ -408,18 +461,20 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
 - (UIView *)makeRowWithTitle:(NSString *)title key:(NSString *)key type:(NSString *)type {
     UIButton *row = [UIButton buttonWithType:UIButtonTypeSystem];
     row.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-    row.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.075];
-    row.layer.cornerRadius = 14.0;
+    row.backgroundColor = UIColor.clearColor;
+    row.layer.cornerRadius = 18.0;
+    row.layer.cornerCurve = kCACornerCurveContinuous;
     row.layer.borderWidth = 0.0;
     row.translatesAutoresizingMaskIntoConstraints = NO;
     row.accessibilityIdentifier = key;
     [row addTarget:self action:@selector(rowTapped:) forControlEvents:UIControlEventTouchUpInside];
     [row addTarget:self action:@selector(rowTouchDown:) forControlEvents:UIControlEventTouchDown];
     [row addTarget:self action:@selector(rowTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+    DYYYInstallLiquidGlass(row, 18.0, YES);
 
     UIView *iconBg = [[UIView alloc] init];
-    iconBg.backgroundColor = [UIColor colorWithRed:0.12 green:0.48 blue:1.0 alpha:0.20];
-    iconBg.layer.cornerRadius = 16;
+    iconBg.backgroundColor = [UIColor colorWithRed:0.20 green:0.48 blue:1.0 alpha:0.14];
+    iconBg.layer.cornerRadius = 15;
     iconBg.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:iconBg];
 
@@ -450,8 +505,8 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     detail.font = [UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightSemibold];
     detail.textColor = [UIColor colorWithRed:0.48 green:0.80 blue:1.0 alpha:1.0];
     detail.textAlignment = NSTextAlignmentCenter;
-    detail.backgroundColor = [UIColor colorWithRed:0.12 green:0.48 blue:1.0 alpha:0.16];
-    detail.layer.cornerRadius = 9;
+    detail.backgroundColor = [UIColor colorWithRed:0.20 green:0.48 blue:1.0 alpha:0.12];
+    detail.layer.cornerRadius = 10;
     detail.clipsToBounds = YES;
     detail.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:detail];
