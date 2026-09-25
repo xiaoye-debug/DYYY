@@ -116,16 +116,9 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
     self.backgroundColor = UIColor.clearColor;
 
     UIView *card = [[UIView alloc] initWithFrame:CGRectZero];
-    card.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits) {
-        return traits.userInterfaceStyle == UIUserInterfaceStyleDark
-            ? [UIColor colorWithWhite:0.10 alpha:0.98]
-            : [UIColor colorWithWhite:0.98 alpha:0.98];
-    }];
-    card.layer.cornerRadius = 24;
-    card.layer.shadowColor = UIColor.blackColor.CGColor;
-    card.layer.shadowOpacity = 0.18;
-    card.layer.shadowRadius = 18;
-    card.layer.shadowOffset = CGSizeMake(0, 8);
+    card.backgroundColor = [UIColor colorWithWhite:0.055 alpha:0.98];
+    card.layer.cornerRadius = 22.0;
+    card.layer.masksToBounds = YES;
     card.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:card];
 
@@ -133,14 +126,14 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
     title.text = self.title;
     title.font = [UIFont boldSystemFontOfSize:23];
     title.textAlignment = NSTextAlignmentCenter;
-    title.textColor = UIColor.labelColor;
+    title.textColor = [UIColor colorWithWhite:1.0 alpha:0.96];
     title.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:title];
 
     UILabel *subtitle = [[UILabel alloc] init];
     subtitle.text = self.isScale ? @"默认值 0；左侧为负数，右侧为正数" : @"默认值 0；上移为正数，下移为负数";
     subtitle.font = [UIFont systemFontOfSize:13];
-    subtitle.textColor = UIColor.secondaryLabelColor;
+    subtitle.textColor = [UIColor colorWithWhite:1.0 alpha:0.42];
     subtitle.textAlignment = NSTextAlignmentCenter;
     subtitle.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:subtitle];
@@ -148,14 +141,14 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
     UILabel *name = [[UILabel alloc] init];
     name.text = self.isScale ? @"缩放调整" : @"距离调整";
     name.font = [UIFont boldSystemFontOfSize:17];
-    name.textColor = UIColor.labelColor;
+    name.textColor = [UIColor colorWithWhite:1.0 alpha:0.92];
     name.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:name];
 
     self.valueLabel = [[UILabel alloc] init];
     self.valueLabel.font = [UIFont monospacedDigitSystemFontOfSize:17 weight:UIFontWeightSemibold];
     self.valueLabel.textAlignment = NSTextAlignmentRight;
-    self.valueLabel.textColor = UIColor.labelColor;
+    self.valueLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.96];
     self.valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:self.valueLabel];
 
@@ -164,8 +157,9 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
     self.slider.maximumValue = self.maximum;
     self.slider.value = MIN(MAX(self.initialValue, self.minimum), self.maximum);
     self.slider.continuous = YES;
-    self.slider.minimumTrackTintColor = UIColor.labelColor;
-    self.slider.maximumTrackTintColor = UIColor.tertiaryLabelColor;
+    self.slider.minimumTrackTintColor = [UIColor colorWithRed:0.28 green:0.65 blue:1.0 alpha:1.0];
+    self.slider.maximumTrackTintColor = [UIColor colorWithWhite:1.0 alpha:0.18];
+    self.slider.thumbTintColor = [UIColor colorWithRed:0.55 green:0.82 blue:1.0 alpha:1.0];
     self.slider.translatesAutoresizingMaskIntoConstraints = NO;
     [self.slider addTarget:self action:@selector(sliderChanged:) forControlEvents:UIControlEventValueChanged];
     [card addSubview:self.slider];
@@ -173,14 +167,14 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
     UILabel *minLabel = [[UILabel alloc] init];
     minLabel.text = [NSString stringWithFormat:@"%+.0f", self.minimum];
     minLabel.font = [UIFont systemFontOfSize:11];
-    minLabel.textColor = UIColor.secondaryLabelColor;
+    minLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.38];
     minLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:minLabel];
 
     UILabel *zeroLabel = [[UILabel alloc] init];
     zeroLabel.text = @"0";
     zeroLabel.font = [UIFont systemFontOfSize:11];
-    zeroLabel.textColor = UIColor.secondaryLabelColor;
+    zeroLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.38];
     zeroLabel.textAlignment = NSTextAlignmentCenter;
     zeroLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:zeroLabel];
@@ -188,7 +182,7 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
     UILabel *maxLabel = [[UILabel alloc] init];
     maxLabel.text = [NSString stringWithFormat:@"+%.0f", self.maximum];
     maxLabel.font = [UIFont systemFontOfSize:11];
-    maxLabel.textColor = UIColor.secondaryLabelColor;
+    maxLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.38];
     maxLabel.textAlignment = NSTextAlignmentRight;
     maxLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:maxLabel];
@@ -196,7 +190,7 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
     UIButton *reset = [UIButton buttonWithType:UIButtonTypeSystem];
     [reset setTitle:@"恢复默认值  0" forState:UIControlStateNormal];
     reset.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
-    reset.backgroundColor = UIColor.secondarySystemBackgroundColor;
+    reset.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
     reset.layer.cornerRadius = 12;
     reset.translatesAutoresizingMaskIntoConstraints = NO;
     [reset addTarget:self action:@selector(resetTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -205,7 +199,7 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
     UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
     [close setTitle:@"关闭" forState:UIControlStateNormal];
     close.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
-    close.backgroundColor = UIColor.secondarySystemBackgroundColor;
+    close.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
     close.layer.cornerRadius = 12;
     close.translatesAutoresizingMaskIntoConstraints = NO;
     [close addTarget:self action:@selector(closeTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -309,29 +303,19 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     self.view.backgroundColor = UIColor.clearColor;
 
     _panel = [[UIView alloc] initWithFrame:CGRectZero];
-    _panel.backgroundColor = UIColor.clearColor;
-    _panel.layer.cornerRadius = 26;
-    _panel.layer.borderWidth = 0.8;
-    _panel.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.20].CGColor;
-
-    UIVisualEffectView *panelBlur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterialDark]];
-    panelBlur.translatesAutoresizingMaskIntoConstraints = NO;
-    panelBlur.userInteractionEnabled = NO;
-    [_panel addSubview:panelBlur];
-    _panel.layer.shadowColor = UIColor.blackColor.CGColor;
-    _panel.layer.shadowOpacity = 0.18;
-    _panel.layer.shadowRadius = 16;
-    _panel.layer.shadowOffset = CGSizeMake(0, 8);
+    // 不再使用 UIBlurEffect：避免毛玻璃导致整块灰蒙蒙，以及圆角四角出现浅色尖角。
+    _panel.backgroundColor = [UIColor colorWithWhite:0.055 alpha:0.97];
+    _panel.layer.cornerRadius = 24.0;
+    _panel.layer.masksToBounds = YES;
     _panel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:_panel];
 
     UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
-    close.backgroundColor = [UIColor colorWithRed:0.95 green:0.22 blue:0.22 alpha:0.70];
     close.layer.cornerRadius = 17;
+    close.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
     [close setTitle:@"×" forState:UIControlStateNormal];
-    [close setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
-    close.titleLabel.font = [UIFont systemFontOfSize:22 weight:UIFontWeightMedium];
-    close.backgroundColor = [UIColor colorWithWhite:1 alpha:0.10];
+    [close setTitleColor:[UIColor colorWithWhite:1.0 alpha:0.86] forState:UIControlStateNormal];
+    close.titleLabel.font = [UIFont systemFontOfSize:21 weight:UIFontWeightMedium];
     close.translatesAutoresizingMaskIntoConstraints = NO;
     [close addTarget:self action:@selector(closePanel) forControlEvents:UIControlEventTouchUpInside];
     [_panel addSubview:close];
@@ -340,14 +324,14 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     title.text = @"视频页面调整";
     title.font = [UIFont systemFontOfSize:21 weight:UIFontWeightBold];
     title.textAlignment = NSTextAlignmentCenter;
-    title.textColor = UIColor.labelColor;
+    title.textColor = [UIColor colorWithWhite:1.0 alpha:0.96];
     title.translatesAutoresizingMaskIntoConstraints = NO;
     [_panel addSubview:title];
 
     UILabel *headerSub = [[UILabel alloc] init];
     headerSub.text = @"双指长按打开 · 调整即时生效";
     headerSub.font = [UIFont systemFontOfSize:11 weight:UIFontWeightMedium];
-    headerSub.textColor = UIColor.secondaryLabelColor;
+    headerSub.textColor = [UIColor colorWithWhite:1.0 alpha:0.42];
     headerSub.textAlignment = NSTextAlignmentCenter;
     headerSub.translatesAutoresizingMaskIntoConstraints = NO;
     [_panel addSubview:headerSub];
@@ -362,11 +346,6 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
         [_panel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-40],
         [_panel.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
         [_panel.heightAnchor constraintEqualToConstant:520],
-
-        [panelBlur.leadingAnchor constraintEqualToAnchor:_panel.leadingAnchor],
-        [panelBlur.trailingAnchor constraintEqualToAnchor:_panel.trailingAnchor],
-        [panelBlur.topAnchor constraintEqualToAnchor:_panel.topAnchor],
-        [panelBlur.bottomAnchor constraintEqualToAnchor:_panel.bottomAnchor],
 
         [close.leadingAnchor constraintEqualToAnchor:_panel.leadingAnchor constant:16],
         [close.topAnchor constraintEqualToAnchor:_panel.topAnchor constant:16],
@@ -429,10 +408,9 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
 - (UIView *)makeRowWithTitle:(NSString *)title key:(NSString *)key type:(NSString *)type {
     UIButton *row = [UIButton buttonWithType:UIButtonTypeSystem];
     row.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-    row.backgroundColor = [UIColor colorWithWhite:1 alpha:0.07];
-    row.layer.cornerRadius = 16;
-    row.layer.borderWidth = 0.5;
-    row.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.10].CGColor;
+    row.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.075];
+    row.layer.cornerRadius = 14.0;
+    row.layer.borderWidth = 0.0;
     row.translatesAutoresizingMaskIntoConstraints = NO;
     row.accessibilityIdentifier = key;
     [row addTarget:self action:@selector(rowTapped:) forControlEvents:UIControlEventTouchUpInside];
@@ -440,7 +418,7 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     [row addTarget:self action:@selector(rowTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
 
     UIView *iconBg = [[UIView alloc] init];
-    iconBg.backgroundColor = [UIColor colorWithRed:0.18 green:0.52 blue:1.0 alpha:0.16];
+    iconBg.backgroundColor = [UIColor colorWithRed:0.12 green:0.48 blue:1.0 alpha:0.20];
     iconBg.layer.cornerRadius = 16;
     iconBg.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:iconBg];
@@ -455,7 +433,7 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
         [key isEqualToString:@"DYYYIPLabelVerticalOffset"] ? @"location.north.line" :
         @"rectangle.bottomhalf.inset.filled";
     UIImageView *icon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:symbolName]];
-    icon.tintColor = [UIColor colorWithRed:0.35 green:0.72 blue:1.0 alpha:1.0];
+    icon.tintColor = [UIColor colorWithRed:0.42 green:0.76 blue:1.0 alpha:1.0];
     icon.contentMode = UIViewContentModeScaleAspectFit;
     icon.translatesAutoresizingMaskIntoConstraints = NO;
     [iconBg addSubview:icon];
@@ -463,16 +441,16 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.text = title;
     titleLabel.font = [UIFont systemFontOfSize:15.5 weight:UIFontWeightSemibold];
-    titleLabel.textColor = UIColor.labelColor;
+    titleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.94];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:titleLabel];
 
     UILabel *detail = [[UILabel alloc] init];
     detail.tag = 9001;
     detail.font = [UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightSemibold];
-    detail.textColor = [UIColor colorWithRed:0.35 green:0.72 blue:1.0 alpha:1.0];
+    detail.textColor = [UIColor colorWithRed:0.48 green:0.80 blue:1.0 alpha:1.0];
     detail.textAlignment = NSTextAlignmentCenter;
-    detail.backgroundColor = [UIColor colorWithRed:0.18 green:0.52 blue:1.0 alpha:0.12];
+    detail.backgroundColor = [UIColor colorWithRed:0.12 green:0.48 blue:1.0 alpha:0.16];
     detail.layer.cornerRadius = 9;
     detail.clipsToBounds = YES;
     detail.translatesAutoresizingMaskIntoConstraints = NO;
@@ -481,12 +459,12 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     UILabel *sub = [[UILabel alloc] init];
     sub.text = [type isEqualToString:@"scale"] ? @"缩放 · 0 为默认" : ([type isEqualToString:@"tabbar"] ? @"高度 · 0 为默认" : @"位置 · 0 为默认");
     sub.font = [UIFont systemFontOfSize:10.5];
-    sub.textColor = UIColor.tertiaryLabelColor;
+    sub.textColor = [UIColor colorWithWhite:1.0 alpha:0.38];
     sub.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:sub];
 
     UIImageView *arrow = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right"]];
-    arrow.tintColor = UIColor.tertiaryLabelColor;
+    arrow.tintColor = [UIColor colorWithWhite:1.0 alpha:0.32];
     arrow.translatesAutoresizingMaskIntoConstraints = NO;
     [row addSubview:arrow];
 
