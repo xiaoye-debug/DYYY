@@ -5960,7 +5960,7 @@ void showDYYYSettingsVC(UIViewController *rootVC, BOOL hasAgreed) {
                                           @"GitHub\n"
                                           @"• 原始开源仓库：huami1314/DYYY\n"
                                           @"• 上游仓库：Wtrwx/DYYY\n"
-                                          @"• 当前维护仓库：VexCove/DYYY"
+                                          @"• 当前维护仓库：xiaoye-debug/DYYY"
                                 onConfirm:nil];
     };
     [aboutItems addObject:aboutItem];
