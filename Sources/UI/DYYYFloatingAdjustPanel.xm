@@ -100,23 +100,79 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 
 #pragma mark - DYYY Liquid Glass
 
-static UIView *DYYYMakeLiquidGlassView(CGRect frame, BOOL interactive) {
-    UIVisualEffectView *glass = nil;
+static NSString * const kDYYYLiquidGlassStyleKey = @"DYYYLiquidGlassStyle";
+static NSInteger const kDYYYLiquidGlassViewTag = 260925;
+
+static BOOL DYYYIsLiquidGlassClear(void) {
+    return [[NSUserDefaults standardUserDefaults] integerForKey:kDYYYLiquidGlassStyleKey] == 1;
+}
+
+static UIVisualEffect *DYYYMakeLiquidGlassEffect(BOOL interactive) {
     if (@available(iOS 26.0, *)) {
-        UIGlassEffect *effect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleRegular];
+        UIGlassEffectStyle style = DYYYIsLiquidGlassClear()
+            ? UIGlassEffectStyleClear
+            : UIGlassEffectStyleRegular;
+        UIGlassEffect *effect = [UIGlassEffect effectWithStyle:style];
         effect.interactive = interactive;
-        glass = [[UIVisualEffectView alloc] initWithEffect:effect];
-    } else {
-        UIBlurEffect *effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
-        glass = [[UIVisualEffectView alloc] initWithEffect:effect];
-        glass.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.28];
+        return effect;
     }
+
+    // iOS 15–25 没有 UIGlassEffect，用两档系统材质模拟 Regular / Clear。
+    return [UIBlurEffect effectWithStyle:DYYYIsLiquidGlassClear()
+        ? UIBlurEffectStyleSystemUltraThinMaterial
+        : UIBlurEffectStyleSystemChromeMaterial];
+}
+
+static UIView *DYYYMakeLiquidGlassView(CGRect frame, BOOL interactive) {
+    UIVisualEffectView *glass = [[UIVisualEffectView alloc] initWithEffect:DYYYMakeLiquidGlassEffect(interactive)];
     glass.frame = frame;
+    glass.tag = kDYYYLiquidGlassViewTag;
     glass.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     glass.userInteractionEnabled = NO;
     glass.layer.cornerCurve = kCACornerCurveContinuous;
     glass.layer.masksToBounds = YES;
+
+    if (@available(iOS 26.0, *)) {
+        // 原生 Liquid Glass 不额外叠深色底，避免 Clear 模式被压暗。
+    } else {
+        glass.backgroundColor = [UIColor colorWithWhite:0.12
+                                                   alpha:DYYYIsLiquidGlassClear() ? 0.12 : 0.28];
+    }
     return glass;
+}
+
+static void DYYYRefreshLiquidGlassViewsInView(UIView *root) {
+    if (!root) return;
+
+    for (UIView *subview in [root.subviews copy]) {
+        if ([subview isKindOfClass:[UIVisualEffectView class]] &&
+            subview.tag == kDYYYLiquidGlassViewTag) {
+            UIVisualEffectView *glass = (UIVisualEffectView *)subview;
+            BOOL interactive = NO;
+            if (@available(iOS 26.0, *)) {
+                UIGlassEffect *oldEffect = [glass.effect isKindOfClass:[UIGlassEffect class]]
+                    ? (UIGlassEffect *)glass.effect : nil;
+                interactive = oldEffect.isInteractive;
+            }
+            glass.effect = DYYYMakeLiquidGlassEffect(interactive);
+            if (@available(iOS 26.0, *)) {
+                glass.backgroundColor = UIColor.clearColor;
+            } else {
+                glass.backgroundColor = [UIColor colorWithWhite:0.12
+                                                           alpha:DYYYIsLiquidGlassClear() ? 0.12 : 0.28];
+            }
+        }
+        DYYYRefreshLiquidGlassViewsInView(subview);
+    }
+}
+
+static void DYYYSetLiquidGlassStyle(NSInteger style) {
+    [[NSUserDefaults standardUserDefaults] setInteger:style forKey:kDYYYLiquidGlassStyleKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+
+    if (gDYYYFloatingAdjustPanel) {
+        DYYYRefreshLiquidGlassViewsInView(gDYYYFloatingAdjustPanel.view);
+    }
 }
 
 static void DYYYInstallLiquidGlass(UIView *container, CGFloat radius, BOOL interactive) {
@@ -324,8 +380,6 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
 @interface DYYYFloatingAdjustPanelViewController : UIViewController
 @end
 
-static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
-
 @implementation DYYYFloatingAdjustPanelViewController {
     UIView *_panel;
     UIScrollView *_scrollView;
@@ -389,6 +443,16 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     headerSub.translatesAutoresizingMaskIntoConstraints = NO;
     [_panel addSubview:headerSub];
 
+    UISegmentedControl *glassStyle = [[UISegmentedControl alloc] initWithItems:@[@"Regular", @"Clear"]];
+    glassStyle.selectedSegmentIndex = DYYYIsLiquidGlassClear() ? 1 : 0;
+    glassStyle.selectedSegmentTintColor = [UIColor colorWithWhite:1.0 alpha:0.20];
+    glassStyle.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
+    glassStyle.tintColor = [UIColor colorWithWhite:1.0 alpha:0.92];
+    glassStyle.translatesAutoresizingMaskIntoConstraints = NO;
+    glassStyle.accessibilityIdentifier = @"DYYYLiquidGlassStyle";
+    [glassStyle addTarget:self action:@selector(liquidGlassStyleChanged:) forControlEvents:UIControlEventValueChanged];
+    [_panel addSubview:glassStyle];
+
     _scrollView = [[UIScrollView alloc] initWithFrame:CGRectZero];
     _scrollView.showsVerticalScrollIndicator = NO;
     _scrollView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -410,9 +474,14 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
         [headerSub.centerXAnchor constraintEqualToAnchor:_panel.centerXAnchor],
         [headerSub.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:1],
 
+        [glassStyle.centerXAnchor constraintEqualToAnchor:_panel.centerXAnchor],
+        [glassStyle.topAnchor constraintEqualToAnchor:headerSub.bottomAnchor constant:8],
+        [glassStyle.widthAnchor constraintEqualToConstant:156],
+        [glassStyle.heightAnchor constraintEqualToConstant:30],
+
         [_scrollView.leadingAnchor constraintEqualToAnchor:_panel.leadingAnchor constant:10],
         [_scrollView.trailingAnchor constraintEqualToAnchor:_panel.trailingAnchor constant:-10],
-        [_scrollView.topAnchor constraintEqualToAnchor:headerSub.bottomAnchor constant:12],
+        [_scrollView.topAnchor constraintEqualToAnchor:glassStyle.bottomAnchor constant:10],
         [_scrollView.bottomAnchor constraintEqualToAnchor:_panel.bottomAnchor constant:-10],
     ]];
 
@@ -684,6 +753,10 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     }];
 }
 
+
+- (void)liquidGlassStyleChanged:(UISegmentedControl *)control {
+    DYYYSetLiquidGlassStyle(control.selectedSegmentIndex);
+}
 
 - (void)closePanel {
     self.view.hidden = YES;
