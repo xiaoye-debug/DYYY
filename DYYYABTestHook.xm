@@ -123,7 +123,7 @@ static void DYYYApplyTabBarHeightToCurrentABTestDataIfNeeded(void) {
 
 
 // 供视频页面浮动调节面板立即复用“界面设置 -> 修改底栏高度”的真实 ABTest 配置。
-void DYYYApplyTabBarHeightSettingNow(void) {
+extern "C" void DYYYApplyTabBarHeightSettingNow(void) {
     DYYYQueueSync(^{
         DYYYApplyTabBarHeightToCurrentABTestDataIfNeeded();
     });
