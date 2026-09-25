@@ -4949,15 +4949,56 @@ static void DYYYSyncHiddenFeedAnchorArrangedView(UIView *inner);
 %end
 
 void DYYYFloatingPanelApplyTabBarDelta(CGFloat delta) {
+    // 与“界面设置 -> 修改底栏高度”共用真实绝对高度值。
+    // 浮动面板以 49pt 内容高度为 0 基准，正负值表示增减。
+    CGFloat contentHeight = MAX(30.0, MIN(109.0, 49.0 + delta));
+
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setDouble:delta forKey:@"DYYYTabBarHeightAdjustment"];
-    if (originalTabBarHeight != kInvalidHeight) {
-        gCurrentTabBarHeight = MAX(1.0, originalTabBarHeight + delta);
-    }
-    UIWindow *window = [DYYYUtils getActiveWindow];
-    if (window) {
+    [defaults setObject:[NSString stringWithFormat:@"%.1f", contentHeight] forKey:@"DYYYTabBarHeight"];
+    [defaults removeObjectForKey:@"DYYYTabBarHeightAdjustment"];
+    [defaults synchronize];
+
+    void (^applyBlock)(void) = ^{
+        UIWindow *window = [DYYYUtils getActiveWindow];
+        if (!window) return;
+
+        Class tabBarClass = NSClassFromString(@"AWENormalModeTabBar");
+        if (!tabBarClass) return;
+
+        NSArray *bars = [DYYYUtils findAllSubviewsOfClass:tabBarClass inContainer:window];
+        CGFloat targetTotalHeight = contentHeight + window.safeAreaInsets.bottom;
+
+        for (UIView *bar in bars) {
+            if ([bar respondsToSelector:@selector(initializeOriginalTabBarHeight)]) {
+                @try {
+                    ((void (*)(id, SEL))objc_msgSend)(bar, @selector(initializeOriginalTabBarHeight));
+                } @catch (__unused NSException *exception) {
+                }
+            }
+
+            UIView *superview = bar.superview;
+            if (!superview || superview.bounds.size.height <= 0.0) continue;
+
+            CGRect frame = bar.frame;
+            frame.size.height = targetTotalHeight;
+            frame.origin.y = MAX(0.0, CGRectGetHeight(superview.bounds) - targetTotalHeight);
+
+            gCurrentTabBarHeight = targetTotalHeight;
+            [bar setFrame:frame];
+            [bar setNeedsLayout];
+            [bar layoutIfNeeded];
+            [superview setNeedsLayout];
+            [superview layoutIfNeeded];
+        }
+
         [window setNeedsLayout];
         [window layoutIfNeeded];
+    };
+
+    if ([NSThread isMainThread]) {
+        applyBlock();
+    } else {
+        dispatch_async(dispatch_get_main_queue(), applyBlock);
     }
 }
 
