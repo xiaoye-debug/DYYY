@@ -121,11 +121,6 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 - (void)build {
     self.backgroundColor = UIColor.clearColor;
 
-    UIView *dim = [[UIView alloc] initWithFrame:self.bounds];
-    dim.backgroundColor = [UIColor colorWithWhite:0 alpha:0.04];
-    dim.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [self addSubview:dim];
-
     UIView *card = [[UIView alloc] initWithFrame:CGRectZero];
     card.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits) {
         return traits.userInterfaceStyle == UIUserInterfaceStyleDark
@@ -226,9 +221,9 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
         [card.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:24],
         [card.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-24],
         [card.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [card.heightAnchor constraintEqualToConstant:350],
+        [card.heightAnchor constraintEqualToConstant:292],
 
-        [title.topAnchor constraintEqualToAnchor:card.topAnchor constant:22],
+        [title.topAnchor constraintEqualToAnchor:card.topAnchor constant:16],
         [title.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:18],
         [title.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-18],
 
@@ -237,7 +232,7 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
         [subtitle.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-18],
 
         [name.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:28],
-        [name.topAnchor constraintEqualToAnchor:subtitle.bottomAnchor constant:28],
+        [name.topAnchor constraintEqualToAnchor:subtitle.bottomAnchor constant:18],
 
         [self.valueLabel.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-28],
         [self.valueLabel.centerYAnchor constraintEqualToAnchor:name.centerYAnchor],
@@ -255,13 +250,13 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
 
         [reset.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:28],
         [reset.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-28],
-        [reset.bottomAnchor constraintEqualToAnchor:close.topAnchor constant:-9],
-        [reset.heightAnchor constraintEqualToConstant:42],
+        [reset.bottomAnchor constraintEqualToAnchor:close.topAnchor constant:-7],
+        [reset.heightAnchor constraintEqualToConstant:36],
 
         [close.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:28],
         [close.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-28],
-        [close.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-18],
-        [close.heightAnchor constraintEqualToConstant:42],
+        [close.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-14],
+        [close.heightAnchor constraintEqualToConstant:36],
     ]];
 
     [self refreshValueLabel:self.slider.value];
@@ -371,7 +366,7 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
         [_panel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:40],
         [_panel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-40],
         [_panel.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
-        [_panel.heightAnchor constraintEqualToConstant:610],
+        [_panel.heightAnchor constraintEqualToConstant:520],
 
         [close.leadingAnchor constraintEqualToAnchor:_panel.leadingAnchor constant:16],
         [close.topAnchor constraintEqualToAnchor:_panel.topAnchor constant:16],
@@ -422,7 +417,7 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
         [NSLayoutConstraint activateConstraints:@[
             [row.leadingAnchor constraintEqualToAnchor:content.leadingAnchor],
             [row.trailingAnchor constraintEqualToAnchor:content.trailingAnchor],
-            [row.heightAnchor constraintEqualToConstant:66],
+            [row.heightAnchor constraintEqualToConstant:58],
         ]];
         if (previous) {
             [row.topAnchor constraintEqualToAnchor:previous.bottomAnchor].active = YES;
@@ -605,29 +600,48 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
 }
 
 - (void)closePanel {
-    [self.view removeFromSuperview];
-    gDYYYFloatingAdjustPanel = nil;
+    self.view.hidden = YES;
+    self.view.userInteractionEnabled = NO;
 }
 
 @end
 
 %hook AWENormalModeTabBar
 
-- (void)setFrame:(CGRect)frame {
+- (void)layoutSubviews {
+    %orig;
+
     CGFloat delta = [[[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYTabBarHeightAdjustment"] doubleValue];
-    NSNumber *original = objc_getAssociatedObject(self, @selector(setFrame:));
-    if (!original && frame.size.height > 20.0) {
-        objc_setAssociatedObject(self, @selector(setFrame:), @(frame.size.height), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        original = @(frame.size.height);
+    CGFloat h = self.bounds.size.height;
+    if (h < 20.0) return;
+
+    static const void *kDYYYTabBarBaseTransformKey = &kDYYYTabBarBaseTransformKey;
+    NSValue *saved = objc_getAssociatedObject(self, kDYYYTabBarBaseTransformKey);
+    CGAffineTransform base = saved ? saved.CGAffineTransformValue : CGAffineTransformIdentity;
+
+    if (!saved) {
+        objc_setAssociatedObject(self,
+                                 kDYYYTabBarBaseTransformKey,
+                                 [NSValue valueWithCGAffineTransform:self.transform],
+                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        base = self.transform;
     }
 
-    if (original) {
-        CGFloat targetHeight = MAX(1.0, original.doubleValue + delta);
-        CGFloat bottom = CGRectGetMaxY(frame);
-        frame.size.height = targetHeight;
-        frame.origin.y = bottom - targetHeight;
+    if (fabs(delta) < 0.01) {
+        self.transform = base;
+        return;
     }
-    %orig(frame);
+
+    CGFloat targetHeight = MAX(12.0, h + delta);
+    CGFloat scaleY = targetHeight / h;
+
+    // Scale around the tab bar's visual center, then compensate vertically so
+    // the bottom edge stays at the original position.
+    CGAffineTransform visual = CGAffineTransformConcat(
+        base,
+        CGAffineTransformMake(scaleY, 0.0, 0.0, 1.0, 0.0, (h - targetHeight) * 0.5)
+    );
+    self.transform = visual;
 }
 
 %end
@@ -640,7 +654,15 @@ void DYYYShowFloatingAdjustPanel(UIViewController *presentingVC) {
     UIWindow *window = DYYYPanelActiveWindow();
     if (!window) return;
 
-    if (gDYYYFloatingAdjustPanel.viewIfLoaded.superview) return;
+    if (gDYYYFloatingAdjustPanel) {
+        if (gDYYYFloatingAdjustPanel.viewIfLoaded.superview == window) {
+            gDYYYFloatingAdjustPanel.view.hidden = NO;
+            gDYYYFloatingAdjustPanel.view.userInteractionEnabled = YES;
+            [window bringSubviewToFront:gDYYYFloatingAdjustPanel.view];
+            return;
+        }
+        gDYYYFloatingAdjustPanel = nil;
+    }
 
     DYYYFloatingAdjustPanelViewController *panel = [[DYYYFloatingAdjustPanelViewController alloc] init];
     gDYYYFloatingAdjustPanel = panel;
