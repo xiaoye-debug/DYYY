@@ -1,7 +1,10 @@
 #import <UIKit/UIKit.h>
+#import <PhotosUI/PhotosUI.h>
 #import <objc/runtime.h>
 
 static NSString * const kDYYYPanelDidChangeNotification = @"DYYYFloatingPanelDidChangeNotification";
+static NSString * const kDYYYTabBarBackgroundImagePathKey = @"DYYYTabBarBackgroundImagePath";
+extern void DYYYRefreshCustomTabBarBackground(void);
 
 // 与“界面设置 -> 修改底栏高度”共用同一个 DYYYTabBarHeight 配置。
 extern "C" void DYYYFloatingPanelApplyTabBarDelta(CGFloat delta);
@@ -378,7 +381,7 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
 
 @end
 
-@interface DYYYFloatingAdjustPanelViewController : UIViewController
+@interface DYYYFloatingAdjustPanelViewController : UIViewController <PHPickerViewControllerDelegate>
 @end
 
 @implementation DYYYFloatingAdjustPanelViewController {
@@ -507,6 +510,7 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
         @[@"文案Y轴距离", @"DYYYDescriptionVerticalOffset", @"offset"],
         @[@"属地Y轴距离", @"DYYYIPLabelVerticalOffset", @"offset"],
         @[@"修改底栏高度", @"DYYYTabBarHeightAdjustment", @"tabbar"],
+        @[@"底栏背景图片", @"DYYYTabBarBackgroundImage", @"image"],
     ];
 
     UIView *previous = nil;
@@ -635,6 +639,14 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
 - (void)updateRow:(UIButton *)row {
     NSString *key = row.accessibilityIdentifier;
     UILabel *detail = [row viewWithTag:9001];
+
+    if ([key isEqualToString:@"DYYYTabBarBackgroundImage"]) {
+        NSString *path = [[NSUserDefaults standardUserDefaults] stringForKey:kDYYYTabBarBackgroundImagePathKey];
+        BOOL exists = path.length > 0 && [[NSFileManager defaultManager] fileExistsAtPath:path];
+        detail.text = exists ? @"已设置" : @"选择";
+        return;
+    }
+
     BOOL scale = [key isEqualToString:@"DYYYElementScale"] ||
                  [key isEqualToString:@"DYYYNicknameScale"] ||
                  [key isEqualToString:@"DYYYDescriptionScale"] ||
@@ -645,6 +657,12 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
 
 - (void)rowTapped:(UIButton *)row {
     NSString *key = row.accessibilityIdentifier;
+
+    if ([key isEqualToString:@"DYYYTabBarBackgroundImage"]) {
+        [self showTabBarBackgroundPicker];
+        return;
+    }
+
     NSString *title = @"";
     for (UIView *sub in row.subviews) {
         if ([sub isKindOfClass:[UILabel class]] && sub.tag != 9001) {
@@ -757,6 +775,60 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
 
 - (void)liquidGlassStyleChanged:(UISegmentedControl *)control {
     DYYYSetLiquidGlassStyle(control.selectedSegmentIndex);
+}
+
+- (void)showTabBarBackgroundPicker {
+    PHPickerConfiguration *configuration = [[PHPickerConfiguration alloc] init];
+    configuration.selectionLimit = 1;
+    configuration.filter = [PHPickerFilter imagesFilter];
+
+    PHPickerViewController *picker = [[PHPickerViewController alloc] initWithConfiguration:configuration];
+    picker.delegate = self;
+    [self presentViewController:picker animated:YES completion:nil];
+}
+
+- (void)picker:(PHPickerViewController *)picker didFinishPicking:(NSArray<PHPickerResult *> *)results {
+    [picker dismissViewControllerAnimated:YES completion:nil];
+
+    PHPickerResult *result = results.firstObject;
+    if (!result) return;
+
+    NSItemProvider *provider = result.itemProvider;
+    if (![provider canLoadObjectOfClass:[UIImage class]]) return;
+
+    [provider loadObjectOfClass:[UIImage class] completionHandler:^(UIImage *image, NSError *error) {
+        if (error || ![image isKindOfClass:[UIImage class]]) return;
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            @autoreleasepool {
+                CGFloat maxSide = 2200.0;
+                CGSize size = image.size;
+                CGFloat scale = MIN(1.0, maxSide / MAX(size.width, size.height));
+                if (scale < 1.0) {
+                    size = CGSizeMake(floor(size.width * scale), floor(size.height * scale));
+                    UIGraphicsBeginImageContextWithOptions(size, NO, 1.0);
+                    [image drawInRect:CGRectMake(0, 0, size.width, size.height)];
+                    image = UIGraphicsGetImageFromCurrentImageContext();
+                    UIGraphicsEndImageContext();
+                }
+
+                NSData *data = UIImageJPEGRepresentation(image, 0.88);
+                if (!data) return;
+
+                NSString *library = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES).firstObject;
+                if (!library.length) return;
+
+                NSString *path = [library stringByAppendingPathComponent:@"DYYYTabBarBackground.jpg"];
+                if (![data writeToFile:path atomically:YES]) return;
+
+                [[NSUserDefaults standardUserDefaults] setObject:path forKey:kDYYYTabBarBackgroundImagePathKey];
+                [[NSUserDefaults standardUserDefaults] synchronize];
+
+                DYYYRefreshCustomTabBarBackground();
+                [self refreshRows];
+            }
+        });
+    }];
 }
 
 - (void)closePanel {
