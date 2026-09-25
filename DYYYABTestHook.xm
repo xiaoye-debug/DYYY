@@ -121,6 +121,14 @@ static void DYYYApplyTabBarHeightToCurrentABTestDataIfNeeded(void) {
     NSLog(@"[DYYY] 已通过 ABTest 注入底栏高度: %@", contentHeight);
 }
 
+
+// 供视频页面浮动调节面板立即复用“界面设置 -> 修改底栏高度”的真实 ABTest 配置。
+void DYYYApplyTabBarHeightSettingNow(void) {
+    DYYYQueueSync(^{
+        DYYYApplyTabBarHeightToCurrentABTestDataIfNeeded();
+    });
+}
+
 @implementation DYYYABTestHook
 
 /** 依据 DYYYABTestModeString 判断模式：YES 覆写，NO 替换。 */
