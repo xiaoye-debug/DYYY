@@ -3,8 +3,8 @@
 #import <objc/runtime.h>
 
 static NSString * const kDYYYPanelDidChangeNotification = @"DYYYFloatingPanelDidChangeNotification";
-static NSString * const kDYYYTabBarBackgroundImagePathKey = @"DYYYTabBarBackgroundImagePath";
-extern void DYYYRefreshCustomTabBarBackground(void);
+static NSString * const kDYYYPanelWallpaperImagePathKey = @"DYYYPanelWallpaperImagePath";
+static NSInteger const kDYYYPanelWallpaperImageViewTag = 260929;
 
 // 与“界面设置 -> 修改底栏高度”共用同一个 DYYYTabBarHeight 配置。
 extern "C" void DYYYFloatingPanelApplyTabBarDelta(CGFloat delta);
@@ -418,7 +418,16 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
     _panel.layer.masksToBounds = YES;
     _panel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:_panel];
+    UIImageView *wallpaper = [[UIImageView alloc] initWithFrame:_panel.bounds];
+    wallpaper.tag = kDYYYPanelWallpaperImageViewTag;
+    wallpaper.contentMode = UIViewContentModeScaleAspectFill;
+    wallpaper.clipsToBounds = YES;
+    wallpaper.userInteractionEnabled = NO;
+    wallpaper.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [_panel insertSubview:wallpaper atIndex:0];
+
     DYYYInstallLiquidGlass(_panel, 30.0, NO);
+    [self refreshPanelWallpaper];
 
     UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
     close.layer.cornerRadius = 18;
@@ -510,7 +519,7 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
         @[@"文案Y轴距离", @"DYYYDescriptionVerticalOffset", @"offset"],
         @[@"属地Y轴距离", @"DYYYIPLabelVerticalOffset", @"offset"],
         @[@"修改底栏高度", @"DYYYTabBarHeightAdjustment", @"tabbar"],
-        @[@"底栏背景图片", @"DYYYTabBarBackgroundImage", @"image"],
+        @[@"插件壁纸", @"DYYYPanelWallpaperImage", @"image"],
     ];
 
     UIView *previous = nil;
@@ -640,8 +649,8 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
     NSString *key = row.accessibilityIdentifier;
     UILabel *detail = [row viewWithTag:9001];
 
-    if ([key isEqualToString:@"DYYYTabBarBackgroundImage"]) {
-        NSString *path = [[NSUserDefaults standardUserDefaults] stringForKey:kDYYYTabBarBackgroundImagePathKey];
+    if ([key isEqualToString:@"DYYYPanelWallpaperImage"]) {
+        NSString *path = [[NSUserDefaults standardUserDefaults] stringForKey:kDYYYPanelWallpaperImagePathKey];
         BOOL exists = path.length > 0 && [[NSFileManager defaultManager] fileExistsAtPath:path];
         detail.text = exists ? @"已设置" : @"选择";
         return;
@@ -658,8 +667,8 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
 - (void)rowTapped:(UIButton *)row {
     NSString *key = row.accessibilityIdentifier;
 
-    if ([key isEqualToString:@"DYYYTabBarBackgroundImage"]) {
-        [self showTabBarBackgroundPicker];
+    if ([key isEqualToString:@"DYYYPanelWallpaperImage"]) {
+        [self showPanelWallpaperPicker];
         return;
     }
 
@@ -777,7 +786,24 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
     DYYYSetLiquidGlassStyle(control.selectedSegmentIndex);
 }
 
-- (void)showTabBarBackgroundPicker {
+- (NSString *)panelWallpaperPath {
+    NSString *stored = [[NSUserDefaults standardUserDefaults] stringForKey:kDYYYPanelWallpaperImagePathKey];
+    if (stored.length > 0 && [[NSFileManager defaultManager] fileExistsAtPath:stored]) {
+        return stored;
+    }
+    NSString *library = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES).firstObject;
+    if (!library.length) return nil;
+    NSString *path = [library stringByAppendingPathComponent:@"DYYYPanelWallpaper.jpg"];
+    return [[NSFileManager defaultManager] fileExistsAtPath:path] ? path : nil;
+}
+
+- (void)refreshPanelWallpaper {
+    UIImageView *wallpaper = (UIImageView *)[_panel viewWithTag:kDYYYPanelWallpaperImageViewTag];
+    if (![wallpaper isKindOfClass:[UIImageView class]]) return;
+    wallpaper.image = [UIImage imageWithContentsOfFile:[self panelWallpaperPath]];
+}
+
+- (void)showPanelWallpaperPicker {
     PHPickerConfiguration *configuration = [[PHPickerConfiguration alloc] init];
     configuration.selectionLimit = 1;
     configuration.filter = [PHPickerFilter imagesFilter];
@@ -819,13 +845,13 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
                 NSString *library = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES).firstObject;
                 if (!library.length) return;
 
-                NSString *path = [library stringByAppendingPathComponent:@"DYYYTabBarBackground.jpg"];
+                NSString *path = [library stringByAppendingPathComponent:@"DYYYPanelWallpaper.jpg"];
                 if (![data writeToFile:path atomically:YES]) return;
 
-                [[NSUserDefaults standardUserDefaults] setObject:path forKey:kDYYYTabBarBackgroundImagePathKey];
+                [[NSUserDefaults standardUserDefaults] setObject:path forKey:kDYYYPanelWallpaperImagePathKey];
                 [[NSUserDefaults standardUserDefaults] synchronize];
 
-                DYYYRefreshCustomTabBarBackground();
+                [self refreshPanelWallpaper];
                 [self refreshRows];
             }
         });
