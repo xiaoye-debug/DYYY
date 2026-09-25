@@ -801,18 +801,19 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
 
         dispatch_async(dispatch_get_main_queue(), ^{
             @autoreleasepool {
+                UIImage *processedImage = image;
                 CGFloat maxSide = 2200.0;
-                CGSize size = image.size;
+                CGSize size = processedImage.size;
                 CGFloat scale = MIN(1.0, maxSide / MAX(size.width, size.height));
                 if (scale < 1.0) {
                     size = CGSizeMake(floor(size.width * scale), floor(size.height * scale));
                     UIGraphicsBeginImageContextWithOptions(size, NO, 1.0);
-                    [image drawInRect:CGRectMake(0, 0, size.width, size.height)];
-                    image = UIGraphicsGetImageFromCurrentImageContext();
+                    [processedImage drawInRect:CGRectMake(0, 0, size.width, size.height)];
+                    processedImage = UIGraphicsGetImageFromCurrentImageContext();
                     UIGraphicsEndImageContext();
                 }
 
-                NSData *data = UIImageJPEGRepresentation(image, 0.88);
+                NSData *data = UIImageJPEGRepresentation(processedImage, 0.88);
                 if (!data) return;
 
                 NSString *library = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES).firstObject;
