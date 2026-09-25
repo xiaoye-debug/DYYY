@@ -612,7 +612,8 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     %orig;
 
     CGFloat delta = [[[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYTabBarHeightAdjustment"] doubleValue];
-    CGFloat h = self.bounds.size.height;
+    UIView *tabBarView = (UIView *)self;
+    CGFloat h = tabBarView.bounds.size.height;
     if (h < 20.0) return;
 
     static const void *kDYYYTabBarBaseTransformKey = &kDYYYTabBarBaseTransformKey;
@@ -622,13 +623,13 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     if (!saved) {
         objc_setAssociatedObject(self,
                                  kDYYYTabBarBaseTransformKey,
-                                 [NSValue valueWithCGAffineTransform:self.transform],
+                                 [NSValue valueWithCGAffineTransform:tabBarView.transform],
                                  OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        base = self.transform;
+        base = tabBarView.transform;
     }
 
     if (fabs(delta) < 0.01) {
-        self.transform = base;
+        tabBarView.transform = base;
         return;
     }
 
@@ -641,7 +642,7 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
         base,
         CGAffineTransformMake(scaleY, 0.0, 0.0, 1.0, 0.0, (h - targetHeight) * 0.5)
     );
-    self.transform = visual;
+    tabBarView.transform = visual;
 }
 
 %end
