@@ -215,6 +215,7 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
 @property(nonatomic, assign) CGFloat initialValue;
 @property(nonatomic, assign) BOOL isScale;
 @property(nonatomic, assign) BOOL isTabBar;
+@property(nonatomic, assign) BOOL isWallpaperOpacity;
 @property(nonatomic, strong) UISlider *slider;
 @property(nonatomic, strong) UILabel *valueLabel;
 @property(nonatomic, copy) void (^onChange)(CGFloat value);
@@ -231,7 +232,13 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
     card.layer.masksToBounds = YES;
     card.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:card];
-    DYYYInstallLiquidGlass(card, 24.0, NO);
+    if (self.isWallpaperOpacity) {
+        card.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.96];
+        card.layer.borderWidth = 0.7;
+        card.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.14].CGColor;
+    } else {
+        DYYYInstallLiquidGlass(card, 24.0, NO);
+    }
 
     UILabel *title = [[UILabel alloc] init];
     title.text = self.title;
@@ -242,7 +249,7 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
     [card addSubview:title];
 
     UILabel *subtitle = [[UILabel alloc] init];
-    subtitle.text = self.isScale ? @"默认值 0；左侧为负数，右侧为正数" : @"默认值 0；上移为正数，下移为负数";
+    subtitle.text = self.isWallpaperOpacity ? @"调整插件壁纸的显示透明度" : (self.isScale ? @"默认值 0；左侧为负数，右侧为正数" : @"默认值 0；上移为正数，下移为负数");
     subtitle.font = [UIFont systemFontOfSize:13];
     subtitle.textColor = [UIColor colorWithWhite:1.0 alpha:0.42];
     subtitle.textAlignment = NSTextAlignmentCenter;
@@ -250,7 +257,7 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
     [card addSubview:subtitle];
 
     UILabel *name = [[UILabel alloc] init];
-    name.text = self.isScale ? @"缩放调整" : @"距离调整";
+    name.text = self.isWallpaperOpacity ? @"透明度" : (self.isScale ? @"缩放调整" : @"距离调整");
     name.font = [UIFont boldSystemFontOfSize:17];
     name.textColor = [UIColor colorWithWhite:1.0 alpha:0.92];
     name.translatesAutoresizingMaskIntoConstraints = NO;
@@ -702,6 +709,7 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
     overlay.isScale = scale;
     overlay.isTabBar = [key isEqualToString:@"DYYYTabBarHeightAdjustment"];
     BOOL isWallpaperOpacity = [key isEqualToString:@"DYYYPanelWallpaperOpacity"];
+    overlay.isWallpaperOpacity = isWallpaperOpacity;
 
     if (scale) {
         overlay.minimum = -0.5;
@@ -824,23 +832,111 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
 }
 
 - (void)showPanelWallpaperActions {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"插件壁纸"
-                                                                   message:@"选择或清除当前插件面板壁纸"
-                                                            preferredStyle:UIAlertControllerStyleActionSheet];
-    [alert addAction:[UIAlertAction actionWithTitle:@"选择壁纸" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
-        [self showPanelWallpaperPicker];
-    }]];
-    if ([self panelWallpaperPath]) {
-        [alert addAction:[UIAlertAction actionWithTitle:@"清除壁纸" style:UIAlertActionStyleDestructive handler:^(__unused UIAlertAction *action) {
-            [self clearPanelWallpaper];
-        }]];
-    }
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    if (alert.popoverPresentationController) {
-        alert.popoverPresentationController.sourceView = _panel;
-        alert.popoverPresentationController.sourceRect = _panel.bounds;
-    }
-    [self presentViewController:alert animated:YES completion:nil];
+    UIView *overlay = [[UIView alloc] initWithFrame:self.view.bounds];
+    overlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    overlay.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.28];
+    overlay.tag = 260931;
+
+    UIView *card = [[UIView alloc] initWithFrame:CGRectZero];
+    card.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.98];
+    card.layer.cornerRadius = 24.0;
+    card.layer.cornerCurve = kCACornerCurveContinuous;
+    card.layer.borderWidth = 0.7;
+    card.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.14].CGColor;
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    [overlay addSubview:card];
+
+    UILabel *title = [[UILabel alloc] init];
+    title.text = @"插件壁纸";
+    title.font = [UIFont systemFontOfSize:21 weight:UIFontWeightBold];
+    title.textColor = [UIColor whiteColor];
+    title.textAlignment = NSTextAlignmentCenter;
+    title.translatesAutoresizingMaskIntoConstraints = NO;
+    [card addSubview:title];
+
+    UILabel *sub = [[UILabel alloc] init];
+    sub.text = @"设置或清除插件调整面板的壁纸";
+    sub.font = [UIFont systemFontOfSize:13];
+    sub.textColor = [UIColor colorWithWhite:1.0 alpha:0.48];
+    sub.textAlignment = NSTextAlignmentCenter;
+    sub.translatesAutoresizingMaskIntoConstraints = NO;
+    [card addSubview:sub];
+
+    UIButton *choose = [UIButton buttonWithType:UIButtonTypeSystem];
+    [choose setTitle:@"选择壁纸" forState:UIControlStateNormal];
+    choose.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    choose.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
+    choose.layer.cornerRadius = 14;
+    choose.translatesAutoresizingMaskIntoConstraints = NO;
+    [choose addTarget:self action:@selector(panelWallpaperChooseFromMenu:) forControlEvents:UIControlEventTouchUpInside];
+    [card addSubview:choose];
+
+    UIButton *clear = [UIButton buttonWithType:UIButtonTypeSystem];
+    [clear setTitle:@"清除壁纸" forState:UIControlStateNormal];
+    [clear setTitleColor:[UIColor systemRedColor] forState:UIControlStateNormal];
+    clear.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    clear.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
+    clear.layer.cornerRadius = 14;
+    clear.translatesAutoresizingMaskIntoConstraints = NO;
+    clear.hidden = ([self panelWallpaperPath] == nil);
+    [clear addTarget:self action:@selector(panelWallpaperClearFromMenu:) forControlEvents:UIControlEventTouchUpInside];
+    [card addSubview:clear];
+
+    UIButton *cancel = [UIButton buttonWithType:UIButtonTypeSystem];
+    [cancel setTitle:@"取消" forState:UIControlStateNormal];
+    cancel.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    cancel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
+    cancel.layer.cornerRadius = 14;
+    cancel.translatesAutoresizingMaskIntoConstraints = NO;
+    [cancel addTarget:self action:@selector(panelWallpaperMenuClose:) forControlEvents:UIControlEventTouchUpInside];
+    [card addSubview:cancel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [card.leadingAnchor constraintEqualToAnchor:overlay.leadingAnchor constant:30],
+        [card.trailingAnchor constraintEqualToAnchor:overlay.trailingAnchor constant:-30],
+        [card.centerYAnchor constraintEqualToAnchor:overlay.centerYAnchor],
+        [card.heightAnchor constraintEqualToConstant:240],
+        [title.topAnchor constraintEqualToAnchor:card.topAnchor constant:22],
+        [title.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:20],
+        [title.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-20],
+        [sub.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:5],
+        [sub.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:20],
+        [sub.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-20],
+        [choose.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:22],
+        [choose.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-22],
+        [choose.topAnchor constraintEqualToAnchor:sub.bottomAnchor constant:18],
+        [choose.heightAnchor constraintEqualToConstant:42],
+        [clear.leadingAnchor constraintEqualToAnchor:choose.leadingAnchor],
+        [clear.trailingAnchor constraintEqualToAnchor:choose.trailingAnchor],
+        [clear.topAnchor constraintEqualToAnchor:choose.bottomAnchor constant:8],
+        [clear.heightAnchor constraintEqualToConstant:42],
+        [cancel.leadingAnchor constraintEqualToAnchor:choose.leadingAnchor],
+        [cancel.trailingAnchor constraintEqualToAnchor:choose.trailingAnchor],
+        [cancel.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-14],
+        [cancel.heightAnchor constraintEqualToConstant:42],
+    ]];
+
+    [self.view addSubview:overlay];
+}
+
+- (void)panelWallpaperChooseFromMenu:(UIButton *)button {
+    UIView *overlay = button;
+    while (overlay && overlay.tag != 260931) overlay = overlay.superview;
+    [overlay removeFromSuperview];
+    [self showPanelWallpaperPicker];
+}
+
+- (void)panelWallpaperClearFromMenu:(UIButton *)button {
+    UIView *overlay = button;
+    while (overlay && overlay.tag != 260931) overlay = overlay.superview;
+    [overlay removeFromSuperview];
+    [self clearPanelWallpaper];
+}
+
+- (void)panelWallpaperMenuClose:(UIButton *)button {
+    UIView *overlay = button;
+    while (overlay && overlay.tag != 260931) overlay = overlay.superview;
+    [overlay removeFromSuperview];
 }
 
 - (void)clearPanelWallpaper {
