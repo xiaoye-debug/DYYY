@@ -1,14 +1,6 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-void DYYYFloatingPanelApplyTabBarDelta(CGFloat delta);
-#ifdef __cplusplus
-}
-#endif
-
 static NSString * const kDYYYPanelDidChangeNotification = @"DYYYFloatingPanelDidChangeNotification";
 
 static UIWindow *DYYYPanelActiveWindow(void) {
@@ -400,14 +392,12 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     ]];
 
     NSArray *items = @[
-        @[@"右侧栏缩放度", @"DYYYElementScale", @"scale"],
         @[@"昵称缩放控制", @"DYYYNicknameScale", @"scale"],
         @[@"文案缩放控制", @"DYYYDescriptionScale", @"scale"],
         @[@"属地缩放控制", @"DYYYIPLabelScale", @"scale"],
         @[@"昵称Y轴距离", @"DYYYNicknameVerticalOffset", @"offset"],
         @[@"文案Y轴距离", @"DYYYDescriptionVerticalOffset", @"offset"],
         @[@"属地Y轴距离", @"DYYYIPLabelVerticalOffset", @"offset"],
-        @[@"修改底栏高度", @"DYYYTabBarHeightAdjustment", @"tabbar"],
     ];
 
     UIView *previous = nil;
@@ -538,7 +528,6 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
             [defaults setObject:storedScale forKey:key];
         } else if (overlay.isTabBar) {
             [defaults setDouble:value forKey:key];
-            DYYYFloatingPanelApplyTabBarDelta(value);
         } else {
             NSString *storedOffset = [NSString stringWithFormat:@"%.3f", value];
             [defaults setObject:storedOffset forKey:key];
@@ -606,46 +595,6 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
 
 @end
 
-%hook AWENormalModeTabBar
-
-- (void)layoutSubviews {
-    %orig;
-
-    CGFloat delta = [[[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYTabBarHeightAdjustment"] doubleValue];
-    UIView *tabBarView = (UIView *)self;
-    CGFloat h = tabBarView.bounds.size.height;
-    if (h < 20.0) return;
-
-    static const void *kDYYYTabBarBaseTransformKey = &kDYYYTabBarBaseTransformKey;
-    NSValue *saved = objc_getAssociatedObject(self, kDYYYTabBarBaseTransformKey);
-    CGAffineTransform base = saved ? saved.CGAffineTransformValue : CGAffineTransformIdentity;
-
-    if (!saved) {
-        objc_setAssociatedObject(self,
-                                 kDYYYTabBarBaseTransformKey,
-                                 [NSValue valueWithCGAffineTransform:tabBarView.transform],
-                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        base = tabBarView.transform;
-    }
-
-    if (fabs(delta) < 0.01) {
-        tabBarView.transform = base;
-        return;
-    }
-
-    CGFloat targetHeight = MAX(12.0, h + delta);
-    CGFloat scaleY = targetHeight / h;
-
-    // Scale around the tab bar's visual center, then compensate vertically so
-    // the bottom edge stays at the original position.
-    CGAffineTransform visual = CGAffineTransformConcat(
-        base,
-        CGAffineTransformMake(scaleY, 0.0, 0.0, 1.0, 0.0, (h - targetHeight) * 0.5)
-    );
-    tabBarView.transform = visual;
-}
-
-%end
 
 #ifdef __cplusplus
 extern "C" {
