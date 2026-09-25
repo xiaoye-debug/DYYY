@@ -4,6 +4,8 @@
 
 static NSString * const kDYYYPanelDidChangeNotification = @"DYYYFloatingPanelDidChangeNotification";
 static NSString * const kDYYYPanelWallpaperImagePathKey = @"DYYYPanelWallpaperImagePath";
+static NSString * const kDYYYPanelWallpaperOpacityKey = @"DYYYPanelWallpaperOpacity";
+static CGFloat const kDYYYPanelWallpaperDefaultOpacity = 0.28;
 static NSInteger const kDYYYPanelWallpaperImageViewTag = 260929;
 
 // 与“界面设置 -> 修改底栏高度”共用同一个 DYYYTabBarHeight 配置。
@@ -421,6 +423,7 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
     UIImageView *wallpaper = [[UIImageView alloc] initWithFrame:_panel.bounds];
     wallpaper.tag = kDYYYPanelWallpaperImageViewTag;
     wallpaper.contentMode = UIViewContentModeScaleAspectFill;
+    wallpaper.alpha = kDYYYPanelWallpaperDefaultOpacity;
     wallpaper.clipsToBounds = YES;
     wallpaper.userInteractionEnabled = NO;
     wallpaper.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -520,6 +523,7 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
         @[@"属地Y轴距离", @"DYYYIPLabelVerticalOffset", @"offset"],
         @[@"修改底栏高度", @"DYYYTabBarHeightAdjustment", @"tabbar"],
         @[@"插件壁纸", @"DYYYPanelWallpaperImage", @"image"],
+        @[@"壁纸透明度", @"DYYYPanelWallpaperOpacity", @"wallpaperOpacity"],
     ];
 
     UIView *previous = nil;
@@ -656,6 +660,12 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
         return;
     }
 
+    if ([key isEqualToString:@"DYYYPanelWallpaperOpacity"]) {
+        CGFloat opacity = DYYYPanelDoubleForKey(key, kDYYYPanelWallpaperDefaultOpacity);
+        detail.text = [NSString stringWithFormat:@"%.0f%%", opacity * 100.0];
+        return;
+    }
+
     BOOL scale = [key isEqualToString:@"DYYYElementScale"] ||
                  [key isEqualToString:@"DYYYNicknameScale"] ||
                  [key isEqualToString:@"DYYYDescriptionScale"] ||
@@ -668,7 +678,7 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
     NSString *key = row.accessibilityIdentifier;
 
     if ([key isEqualToString:@"DYYYPanelWallpaperImage"]) {
-        [self showPanelWallpaperPicker];
+        [self showPanelWallpaperActions];
         return;
     }
 
@@ -691,6 +701,7 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
                  [key isEqualToString:@"DYYYIPLabelScale"];
     overlay.isScale = scale;
     overlay.isTabBar = [key isEqualToString:@"DYYYTabBarHeightAdjustment"];
+    BOOL isWallpaperOpacity = [key isEqualToString:@"DYYYPanelWallpaperOpacity"];
 
     if (scale) {
         overlay.minimum = -0.5;
@@ -704,6 +715,10 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
         NSString *heightString = [[NSUserDefaults standardUserDefaults] stringForKey:@"DYYYTabBarHeight"];
         CGFloat currentHeight = heightString.length ? heightString.doubleValue : 49.0;
         overlay.initialValue = currentHeight - 49.0;
+    } else if (isWallpaperOpacity) {
+        overlay.minimum = 0.05;
+        overlay.maximum = 1.0;
+        overlay.initialValue = DYYYPanelDoubleForKey(key, kDYYYPanelWallpaperDefaultOpacity);
     } else {
         overlay.minimum = -80.0;
         overlay.maximum = 80.0;
@@ -725,6 +740,10 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
                           forKey:@"DYYYTabBarHeight"];
             [defaults removeObjectForKey:@"DYYYTabBarHeightAdjustment"];
             DYYYFloatingPanelApplyTabBarDelta(value);
+        } else if (isWallpaperOpacity) {
+            [defaults setObject:@(MAX(0.05, MIN(1.0, value))) forKey:key];
+            UIImageView *wallpaper = (UIImageView *)[_panel viewWithTag:kDYYYPanelWallpaperImageViewTag];
+            if ([wallpaper isKindOfClass:[UIImageView class]]) wallpaper.alpha = value;
         } else {
             NSString *storedOffset = [NSString stringWithFormat:@"%.3f", value];
             [defaults setObject:storedOffset forKey:key];
@@ -801,6 +820,38 @@ static void DYYYStyleGlassButton(UIButton *button, CGFloat radius) {
     UIImageView *wallpaper = (UIImageView *)[_panel viewWithTag:kDYYYPanelWallpaperImageViewTag];
     if (![wallpaper isKindOfClass:[UIImageView class]]) return;
     wallpaper.image = [UIImage imageWithContentsOfFile:[self panelWallpaperPath]];
+    wallpaper.alpha = DYYYPanelDoubleForKey(kDYYYPanelWallpaperOpacityKey, kDYYYPanelWallpaperDefaultOpacity);
+}
+
+- (void)showPanelWallpaperActions {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"插件壁纸"
+                                                                   message:@"选择或清除当前插件面板壁纸"
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+    [alert addAction:[UIAlertAction actionWithTitle:@"选择壁纸" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+        [self showPanelWallpaperPicker];
+    }]];
+    if ([self panelWallpaperPath]) {
+        [alert addAction:[UIAlertAction actionWithTitle:@"清除壁纸" style:UIAlertActionStyleDestructive handler:^(__unused UIAlertAction *action) {
+            [self clearPanelWallpaper];
+        }]];
+    }
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+    if (alert.popoverPresentationController) {
+        alert.popoverPresentationController.sourceView = _panel;
+        alert.popoverPresentationController.sourceRect = _panel.bounds;
+    }
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)clearPanelWallpaper {
+    NSString *path = [self panelWallpaperPath];
+    if (path.length) {
+        [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+    }
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:kDYYYPanelWallpaperImagePathKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [self refreshPanelWallpaper];
+    [self refreshRows];
 }
 
 - (void)showPanelWallpaperPicker {
