@@ -300,7 +300,20 @@ static NSString *DYYYPanelFormat(CGFloat value, BOOL percent) {
     [super viewDidLoad];
     self.view.backgroundColor = UIColor.clearColor;
     self.modalPresentationStyle = UIModalPresentationOverFullScreen;
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(dyyyPanelValueChanged:)
+                                                 name:kDYYYPanelDidChangeNotification
+                                               object:nil];
     [self buildUI];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)dyyyPanelValueChanged:(NSNotification *)notification {
+    [self refreshRows];
+    [self refreshLiveLayout];
 }
 
 - (void)buildUI {
