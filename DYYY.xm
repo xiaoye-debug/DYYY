@@ -15187,6 +15187,30 @@ static void DYYYApplyTabBarBackgroundAppearance(AWENormalModeTabBar *bar) {
     }
 }
 
+void DYYYRefreshCustomTabBarBackground(void) {
+    void (^applyBlock)(void) = ^{
+        UIWindow *window = [DYYYUtils getActiveWindow];
+        if (!window) return;
+
+        Class tabBarClass = NSClassFromString(@"AWENormalModeTabBar");
+        if (!tabBarClass) return;
+
+        NSArray *bars = [DYYYUtils findAllSubviewsOfClass:tabBarClass inContainer:window];
+        for (UIView *bar in bars) {
+            if ([bar isKindOfClass:tabBarClass]) {
+                DYYYApplyTabBarBackgroundAppearance((AWENormalModeTabBar *)bar);
+                [bar setNeedsLayout];
+            }
+        }
+    };
+
+    if ([NSThread isMainThread]) {
+        applyBlock();
+    } else {
+        dispatch_async(dispatch_get_main_queue(), applyBlock);
+    }
+}
+
 %hook AWENormalModeTabBar
 
 static Class barBackgroundClass = nil;
