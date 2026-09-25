@@ -2,6 +2,58 @@
 #import <objc/runtime.h>
 
 static NSString * const kDYYYPanelDidChangeNotification = @"DYYYFloatingPanelDidChangeNotification";
+static char kDYYYVisualTabBarBaseTransformKey;
+
+static UIView *DYYYFindTabBarViewInView(UIView *view) {
+    if (!view) return nil;
+    if ([NSStringFromClass(view.class) isEqualToString:@"AWENormalModeTabBar"]) return view;
+    for (UIView *subview in [view.subviews copy]) {
+        UIView *found = DYYYFindTabBarViewInView(subview);
+        if (found) return found;
+    }
+    return nil;
+}
+
+static UIView *DYYYCurrentTabBarView(void) {
+    UIWindow *window = DYYYPanelActiveWindow();
+    if (!window) return nil;
+    return DYYYFindTabBarViewInView(window);
+}
+
+static void DYYYApplyVisualTabBarDelta(CGFloat delta) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIView *tabBar = DYYYCurrentTabBarView();
+        if (!tabBar || tabBar.bounds.size.height < 20.0) return;
+
+        NSValue *saved = objc_getAssociatedObject(tabBar, &kDYYYVisualTabBarBaseTransformKey);
+        CGAffineTransform base = saved ? saved.CGAffineTransformValue : tabBar.transform;
+        if (!saved) {
+            objc_setAssociatedObject(tabBar,
+                                     &kDYYYVisualTabBarBaseTransformKey,
+                                     [NSValue valueWithCGAffineTransform:tabBar.transform],
+                                     OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        }
+
+        if (fabs(delta) < 0.01) {
+            tabBar.transform = base;
+            return;
+        }
+
+        CGFloat h = tabBar.bounds.size.height;
+        CGFloat targetHeight = MAX(12.0, h + delta);
+        CGFloat scaleY = targetHeight / h;
+
+        // 只改变底栏本身的视觉高度，底边保持原位置。
+        // 不修改 frame、safeArea、ABTest 或全局高度变量，因此不会推动昵称/文案/IP。
+        CGAffineTransform visual = CGAffineTransformMake(1.0,
+                                                         0.0,
+                                                         0.0,
+                                                         scaleY,
+                                                         0.0,
+                                                         (h - targetHeight) * 0.5);
+        tabBar.transform = CGAffineTransformConcat(base, visual);
+    });
+}
 
 static UIWindow *DYYYPanelActiveWindow(void) {
     UIWindow *window = nil;
@@ -292,6 +344,9 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
                                                  name:kDYYYPanelDidChangeNotification
                                                object:nil];
     [self buildUI];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        DYYYApplyVisualTabBarDelta(DYYYPanelDoubleForKey(@"DYYYTabBarHeightAdjustment", 0.0));
+    });
 }
 
 - (void)dealloc {
@@ -332,15 +387,6 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     [close addTarget:self action:@selector(closePanel) forControlEvents:UIControlEventTouchUpInside];
     [_panel addSubview:close];
 
-    UIButton *collapse = [UIButton buttonWithType:UIButtonTypeSystem];
-    collapse.backgroundColor = [UIColor colorWithWhite:1 alpha:0.78];
-    collapse.layer.cornerRadius = 17;
-    [collapse setImage:[UIImage systemImageNamed:@"chevron.down"] forState:UIControlStateNormal];
-    collapse.tintColor = UIColor.labelColor;
-    collapse.translatesAutoresizingMaskIntoConstraints = NO;
-    [collapse addTarget:self action:@selector(collapsePanel) forControlEvents:UIControlEventTouchUpInside];
-    [_panel addSubview:collapse];
-
     UILabel *title = [[UILabel alloc] init];
     title.text = @"视频页面调整";
     title.font = [UIFont boldSystemFontOfSize:21];
@@ -365,11 +411,6 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
         [close.widthAnchor constraintEqualToConstant:34],
         [close.heightAnchor constraintEqualToConstant:34],
 
-        [collapse.trailingAnchor constraintEqualToAnchor:_panel.trailingAnchor constant:-16],
-        [collapse.topAnchor constraintEqualToAnchor:_panel.topAnchor constant:16],
-        [collapse.widthAnchor constraintEqualToConstant:34],
-        [collapse.heightAnchor constraintEqualToConstant:34],
-
         [title.centerXAnchor constraintEqualToAnchor:_panel.centerXAnchor],
         [title.centerYAnchor constraintEqualToAnchor:close.centerYAnchor],
 
@@ -392,12 +433,14 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     ]];
 
     NSArray *items = @[
+        @[@"右侧栏缩放度", @"DYYYElementScale", @"scale"],
         @[@"昵称缩放控制", @"DYYYNicknameScale", @"scale"],
         @[@"文案缩放控制", @"DYYYDescriptionScale", @"scale"],
         @[@"属地缩放控制", @"DYYYIPLabelScale", @"scale"],
         @[@"昵称Y轴距离", @"DYYYNicknameVerticalOffset", @"offset"],
         @[@"文案Y轴距离", @"DYYYDescriptionVerticalOffset", @"offset"],
         @[@"属地Y轴距离", @"DYYYIPLabelVerticalOffset", @"offset"],
+        @[@"修改底栏高度", @"DYYYTabBarHeightAdjustment", @"tabbar"],
     ];
 
     UIView *previous = nil;
@@ -528,6 +571,7 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
             [defaults setObject:storedScale forKey:key];
         } else if (overlay.isTabBar) {
             [defaults setDouble:value forKey:key];
+            DYYYApplyVisualTabBarDelta(value);
         } else {
             NSString *storedOffset = [NSString stringWithFormat:@"%.3f", value];
             [defaults setObject:storedOffset forKey:key];
@@ -584,9 +628,6 @@ static DYYYFloatingAdjustPanelViewController *gDYYYFloatingAdjustPanel = nil;
     }];
 }
 
-- (void)collapsePanel {
-    _panel.hidden = YES;
-}
 
 - (void)closePanel {
     self.view.hidden = YES;
